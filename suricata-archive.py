@@ -70,22 +70,24 @@ con = False
 con = sqlite3.connect('/var/lib/suricata-archive.db')
 
 def get_row_data(entry):
-    current_entry = []
-    for i in range(0,11):
-        if i in (2,3,4,5,6,7,8):
-            current_entry.append(str(entry[i]))
-        else:
-            current_entry.append(int(entry[i]))
+    current_entry = entry
+    current_entry[0]=int(current_entry[0])
+    current_entry[1]=int(current_entry[1])
+    current_entry[2]=int(current_entry[2])
+    current_entry[10]=int(current_entry[10])
+    current_entry[11]=int(current_entry[11])
     return current_entry
 
 def merge_row(current_entry, entry):
+	#array: end, duration, connections, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname, app_hostname_type
     if current_entry[1] < current_entry[0] - (int(entry[0]) - int(entry[1])):
         current_entry[1] = current_entry[0] - (int(entry[0]) - int(entry[1]))
-        for i in (3,4,5,6,7,8):
+        current_entry[2] = current_entry[2] + entry[2]
+        for i in (4,5,6,7,8,9,13):
             if(entry[i] != current_entry[i]):
                 current_entry[i] = ''
-        current_entry[9] = current_entry[9] + entry[9]
         current_entry[10] = current_entry[10] + entry[10]
+        current_entry[11] = current_entry[11] + entry[11]
     return current_entry
 
 def squash(fr, to, window, end, top):
@@ -101,7 +103,7 @@ def squash(fr, to, window, end, top):
         for host_row in host_cur.execute('SELECT distinct(app_level_hostname) FROM traffic WHERE details = ? AND end < ? AND src_mac = ?', (fr, end, mac_row[0])):
             tmp = con.cursor()
             current_entry = None
-            for entry in tmp.execute('SELECT end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received '
+            for entry in tmp.execute('SELECT end, duration, connections, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname, app_hostname_type '
                                      'FROM traffic WHERE details = ? AND end < ? AND src_mac = ? AND app_level_hostname = ? ORDER BY end DESC', (fr, end, mac_row[0], host_row[0])):
                 squashed_checked = squashed_checked + 1
                 if current_entry is None:
@@ -111,7 +113,7 @@ def squash(fr, to, window, end, top):
                         squashed = squashed + 1
                         current_entry = merge_row(current_entry, entry)
                     else:
-                        con.cursor().execute('INSERT INTO traffic VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',(
+                        con.cursor().execute('INSERT INTO traffic VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(
                                               current_entry[0], current_entry[1], to, current_entry[2], current_entry[3], current_entry[4], current_entry[5],
                                               current_entry[6], current_entry[7], current_entry[8], current_entry[9], current_entry[10], host_row[0]))
                         current_entry = get_row_data(entry)
@@ -163,10 +165,10 @@ def squash(fr, to, window, end, top):
 c = con.cursor()
 try:
      c.execute('CREATE TABLE traffic '
-               '(end integer, duration integer, details integer, '
+               '(end integer, duration integer, connections integer, details integer, '
                'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
                'proto text, app_proto text, bytes_send integer, '
-               'bytes_received integer, app_level_hostname text)')
+               'bytes_received integer, app_hostname text, app_hostname_type integer)')
 except:
      print('Table "traffic" already exists')
 try:

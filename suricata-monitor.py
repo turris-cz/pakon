@@ -16,7 +16,7 @@ import errno
 import logging
 from bottle import template
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 delimiter = '__uci__delimiter__'
@@ -126,10 +126,11 @@ if con:
         logging.debug('Table "alerts" already exists')
     try:
         c.execute('CREATE TABLE traffic '
-                  '(end integer, duration integer, '
+                  '(end integer, duration integer, connections integer,'
                   'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
                   'proto text, app_proto text, bytes_send integer, '
-                  'bytes_received integer, app_level_hostname text)')
+                  'bytes_received integer, app_hostname text, app_hostname_type integer)')
+#app_hostname_type: 0 - unknown, 1 - tls/http(app level), 2 - dns, 3 - reverse lookup
     except:
         logging.debug('Table "traffic" already exists')
     try:
@@ -151,7 +152,7 @@ def exit_gracefully(signum, frame):
     if not con:
         return
     for flow in active_flows.itervalues():
-         c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (flow[0], 0, flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], 0, 0, flow[8]))
+         c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (int(time.time()), int(time.time())-flow[0], 1, flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], 0, 0, flow[8], 1))
     con.commit()
     if con:
          con.close()
@@ -246,19 +247,21 @@ while True:
                 if data['flow_id'] in active_flows.keys():
                     hostname = active_flows[data['flow_id']][8]
                     del active_flows[data['flow_id']]
+                    hostname_type = 1
                 else:
                     hostname = ''
+                    hostname_type = 0
                 if 'src_port' not in data.keys():
                     data['src_port'] = ''
                 if int(data['flow']['bytes_toserver'])==0 or int(data['flow']['bytes_toclient'])==0:
                     continue
                 try:
-                    c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                               (timestamp2unixtime(data['flow']['end']),
-                               timestamp2unixtime(data['flow']['end'])-timestamp2unixtime(data['flow']['start']), data['ether']['src'], data['src_ip'],
+                               timestamp2unixtime(data['flow']['end'])-timestamp2unixtime(data['flow']['start']), 1, data['ether']['src'], data['src_ip'],
                                data['src_port'], data['dest_ip'], data['dest_port'],
                                data['proto'], data['app_proto'], data['flow']['bytes_toserver'],
-                               data['flow']['bytes_toclient'], hostname))
+                               data['flow']['bytes_toclient'], hostname, hostname_type))
                 except Exception as e:
                     print(e)
 

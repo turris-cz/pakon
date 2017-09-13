@@ -13,10 +13,13 @@ import datetime
 import sqlite3
 import signal
 import errno
+import logging
 from bottle import template
 
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
 delimiter = '__uci__delimiter__'
-debug = False
 
 # uci get wrapper
 def uci_get(opt):
@@ -31,8 +34,7 @@ def uci_get(opt):
 
 # fills hostname from dhcp.leases
 def fill_hostname(data):
-    if debug:
-        print('Filling hostname')
+    logging.debug('Filling hostname')
     try:
         with open('/tmp/dhcp.leases','r').readlines() as line:
             for line in file.readlines():
@@ -67,11 +69,9 @@ if uci_get('suricata-monitor.notifications.enabled') in ('1', 'yes', 'true', 'en
 log_traffic = False
 if uci_get('suricata-monitor.logger.enabled') in ('1', 'yes', 'true', 'enabled', 'on'):
     log_traffic = True
-if uci_get('suricata-monitor.logger.debug') in ('1', 'yes', 'true', 'enabled', 'on'):
-    debug = True
 
 if not notifications and not log_traffic:
-    print("No functionality enable, enable at least one first")
+    logging.error("No functionality enable, enable at least one first")
     sys.exit(1)
 
 # get configuration
@@ -84,13 +84,13 @@ to = uci_get('suricata-monitor.notifications.to')
 # verify configuration
 if notifications:
     if smtp_server == "" or smtp_login == "" or smtp_password == "":
-        print('Incomplete smtp configuration!')
-        print('Please set smtp_server, smtp_login and smtp_password in suricata-monitor.notifications')
+        logging.error('Incomplete smtp configuration!')
+        logging.error('Please set smtp_server, smtp_login and smtp_password in suricata-monitor.notifications')
         sys.exit(1)
 
     if fr == "" or to == "":
-        print('Incomplete configuration!')
-        print('Please set from and to in suricata-monitor.notifications')
+        logging.error('Incomplete configuration!')
+        logging.error('Please set from and to in suricata-monitor.notifications')
         sys.exit(1)
 
 
@@ -123,7 +123,7 @@ if con:
                     'src_eth text, dst_eth text, '
                     'category text, signature text, hostname text)')
     except:
-        print('Table "alerts" already exists')
+        logging.debug('Table "alerts" already exists')
     try:
         c.execute('CREATE TABLE traffic '
                   '(end integer, duration integer, '
@@ -131,49 +131,18 @@ if con:
                   'proto text, app_proto text, bytes_send integer, '
                   'bytes_received integer, app_level_hostname text)')
     except:
-        print('Table "traffic" already exists')
+        logging.debug('Table "traffic" already exists')
     try:
         c.execute('CREATE TABLE dns '
                   '(time integer, client text, name text, type text, data text)')
     except:
-        print('Table "dns" already exists')
+        logging.debug('Table "dns" already exists')
     try:
         c.execute('CREATE TABLE settings '
                   '(key text, value integer)')
         c.execute('INSERT INTO settings VALUES (?, ?)', ('db_schema_version', 1))
     except:
-        print('Table "settings" already exists')
-'''
-    We don't want indexes for now. We are not using them now, so it's a waste of space.
-    Besides, I think that DNS cache should be implemented in the program itself, not in database.
-
-    # Create some indexes
-    try:
-        c.execute('CREATE INDEX dns_lookup ON dns(client,name)')
-    except:
-        print('Index "dns_lookup" already exists')
-    try:
-        c.execute('CREATE INDEX dns_reverse_lookup ON dns(client,data)')
-    except:
-        print('Index "dns_reverse_lookup" already exists')
-'''
-'''
-    Generation is not used now. Flow IDs are discarded when we have complete info about them (we won't need it anymore).
-
-    # Set generation - flow ids have to be unique only within one generation
-    if debug:
-        print('Geting DB settings.')
-    gen = 0;
-    c.execute('SELECT value FROM settings WHERE key = "generation"')
-    row = c.fetchone()
-    if row is not None:
-        gen = row[0];
-    if gen > 0:
-        c.execute('UPDATE settings SET value = ? WHERE key = ?', (gen + 1, 'generation'))
-    else:
-        c.execute('INSERT INTO settings VALUES (?, ?)', ('generation', 1))
-    c.execute('UPDATE settings SET value = ? WHERE key = ?', (1, 'db_schema_version'))
-'''
+        logging.debug('Table "settings" already exists')
 
 # Main loop
 
@@ -199,23 +168,21 @@ active_flows={}
 try:
     conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/suricata_monitor.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
 except Exception as e:
-    print("Can't get data from flows_conntrack.py")
-    print(e)
+    logging.error("Can't run flows_conntrack.py")
+    logging.error(e)
     sys.exit(1)
 
-print("Listening...")
+logging.debug("Listening...")
 
 
 while True:
     try:
-        if debug:
-           print('Getting data...')
+        logging.debug('Getting data...')
         line = conntrack.stdout.readline()
         if not line:
             break
         line = string.strip(line)
-        if debug:
-            print(line)
+        logging.debug(line)
         if not line:
             continue
         skip = False
@@ -228,16 +195,14 @@ while True:
             data['ether']['src']=''
         # Handle alerts
         if data['event_type'] == 'alert':
-            if debug:
-                print('Got alert!')
+            logging.debug('Got alert!')
             for regex in res:
                 if regex.match(data['alert']['signature']):
                     skip = True
                     break
             data = fill_hostname(data)
             if skip == False and data['alert']['severity'] < sev:
-                if debug:
-                    print('Sending mail to ' + to + ' about ' + data['alert']['category'])
+                logging.debug('Sending mail to ' + to + ' about ' + data['alert']['category'])
                 if notifications:
                     with open('/etc/suricata/message.tmpl','r') as file:
                         tmpl = file.read()
@@ -258,17 +223,15 @@ while True:
 
         # Handle all other traffic
         if data['event_type'] == 'dns' and con:
-            if debug:
-                print('Got dns!')
+            logging.debug('Got dns!')
             if data['dns'] and data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME') and con:
                 c.execute('SELECT data FROM dns WHERE client = ? AND name = ? ORDER BY time LIMIT 1',
                           (data['dest_ip'], data['dns']['rrname']))
                 row = c.fetchone()
                 if row is None or row[0] != data['dns']['rdata']:
-                    if debug:
-                        print 'Saving DNS data'
-                        if row:
-                            print ' -> ' + row[0] + ' != ' + data['dns']['rdata']
+                    logging.debug('Saving DNS data')
+                    if row:
+                        logging.debug(' -> ' + row[0] + ' != ' + data['dns']['rdata'])
                     c.execute('INSERT INTO dns VALUES (?,?,?,?,?)',
                               (timestamp2unixtime(data['timestamp']),
                               data['dest_ip'], data['dns']['rrname'], data['dns']['rrtype'],
@@ -276,8 +239,7 @@ while True:
 
         # Insert or update flow - it might already exist from TLS connection
         if data['event_type'] == 'flow' and data['flow'] and con and data['proto'] in ['TCP', 'UDP']:
-            if debug:
-                print('Got flow!')
+            logging.debug('Got flow!')
             if 'app_proto' not in data.keys():
                 data['app_proto'] = ''
             if data['app_proto'] not in ['failed', 'dns']:
@@ -302,8 +264,7 @@ while True:
 
         # Store TLS details of flow
         if data['event_type'] == 'tls' and data['tls'] and con:
-            if debug:
-                print('Got tls!')
+            logging.debug('Got tls!')
             hostname = ''
             if 'sni' in data['tls'].keys():
                 hostname = data['tls']['sni']
@@ -331,5 +292,5 @@ while True:
         if e.errno != errno.EINTR:
             raise
 
-print("End of data?")
-print("This may mean that suricata_conntrack_flows.py doesn't exist/is broken...")
+logging.error("End of data?")
+logging.error("This may mean that suricata_conntrack_flows.py doesn't exist/is broken...")

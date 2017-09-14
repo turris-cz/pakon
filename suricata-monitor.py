@@ -149,6 +149,8 @@ if con:
 
 def exit_gracefully(signum, frame):
     global c, con, active_flows
+    conntrack.terminate()
+    time.sleep(1)
     if not con:
         return
     for flow in active_flows.itervalues():
@@ -156,6 +158,7 @@ def exit_gracefully(signum, frame):
     con.commit()
     if con:
          con.close()
+    conntrack.kill()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, exit_gracefully)

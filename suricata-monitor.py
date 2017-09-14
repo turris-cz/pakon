@@ -280,10 +280,13 @@ while True:
             if not hostname:
                 continue
             active_flows[data['flow_id']]=(int(time.time()), data['ether']['src'], data['src_ip'], data['src_port'], data['dest_ip'], data['dest_port'], data['proto'], 'tls', hostname)
+
+        # Store HTTP details of flow
         if data['event_type'] == 'http' and data['http'] and con:
             if 'hostname' not in data['http'].keys():
                 continue
             active_flows[data['flow_id']]=(int(time.time()), data['ether']['src'], data['src_ip'], data['src_port'],data['dest_ip'], data['dest_port'], data['proto'], 'http', data['http']['hostname'])
+
         # Commit everything
         if con:
             con.commit()

@@ -58,18 +58,18 @@ print("Solving DNS")
 print("Using DNS cache...")
 cache = 0
 reverse = 0
-for row in c.execute('SELECT rowid, (end-duration) AS start, end, duration, src_ip, dest_ip FROM traffic WHERE start >= ? AND app_hostname_type = 0', (start,)):
-    name = get_name_from_cache(row[1], row[4], row[5])
+for row in c.execute('SELECT start, src_ip, dest_ip FROM traffic WHERE start >= ? AND app_hostname_type = 0', (start,)):
+    name = get_name_from_cache(row[0], row[1], row[2])
     if name:
         t = con.cursor()
-        t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 2 WHERE rowid = ?', (name, row[0]))
+        t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 2 WHERE start = ?', (name, row[0]))
         cache = cache + 1
 print(str(cache)+" records filled from DNS cache")
 print("Trying reverse lookups...")
 con.commit()
 q_in = Queue()
 q_out = Queue()
-for row in c.execute('SELECT DISTINCT(dest_ip) FROM traffic WHERE app_hostname_type = 0 AND (end-duration) > ?', (start, )):
+for row in c.execute('SELECT DISTINCT(dest_ip) FROM traffic WHERE start > ? AND app_hostname_type = 0', (start, )):
     q_in.put(row[0])
 p = []
 for i in range(0, dns_threads):
@@ -81,7 +81,7 @@ for tp in p:
     tp.join()
 while not q_out.empty():
     res = q_out.get()
-    t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 3 WHERE (end-duration) > ? AND dest_ip = ? AND app_hostname = ""', (res[1], start, res[0]))
+    t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 3 WHERE start > ? AND dest_ip = ? AND app_hostname = ""', (res[1], start, res[0]))
     reverse = reverse + 1
 print(str(reverse)+" records filled from reverse lookups")
 con.commit()

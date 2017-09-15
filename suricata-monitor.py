@@ -16,7 +16,7 @@ import errno
 import logging
 from bottle import template
 
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 delimiter = '__uci__delimiter__'
@@ -60,6 +60,7 @@ def timestamp2unixtime(timestamp):
     if offset_str[0] == "+":
         offset = -offset
     timestamp = time.mktime(dt.timetuple()) + offset * 60
+    timestamp = timestamp*1.0 + dt.microsecond*1.0/1000000
     return timestamp
 
 # check what is enabled
@@ -126,7 +127,7 @@ if con:
         logging.debug('Table "alerts" already exists')
     try:
         c.execute('CREATE TABLE traffic '
-                  '(end integer, duration integer, connections integer,'
+                  '(start real primary key, duration integer, connections integer,'
                   'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
                   'proto text, app_proto text, bytes_send integer, '
                   'bytes_received integer, app_hostname text, app_hostname_type integer)')
@@ -154,7 +155,7 @@ def exit_gracefully(signum, frame):
     if not con:
         return
     for flow in active_flows.itervalues():
-         c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (int(time.time()), int(time.time())-flow[0], 1, flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], 0, 0, flow[8], 1))
+         c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (flow[0], int(time.time()-flow[0]), 1, flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], 0, 0, flow[8], 1))
     con.commit()
     if con:
          con.close()
@@ -245,7 +246,7 @@ while True:
         if data['event_type'] == 'flow' and data['flow'] and con and data['proto'] in ['TCP', 'UDP']:
             logging.debug('Got flow!')
             if 'app_proto' not in data.keys():
-                data['app_proto'] = ''
+                data['app_proto'] = 'unknown'
             if data['app_proto'] not in ['failed', 'dns']:
                 if data['flow_id'] in active_flows.keys():
                     hostname = active_flows[data['flow_id']][8]
@@ -260,11 +261,13 @@ while True:
                     continue
                 try:
                     c.execute('INSERT INTO traffic VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                              (timestamp2unixtime(data['flow']['end']),
-                               timestamp2unixtime(data['flow']['end'])-timestamp2unixtime(data['flow']['start']), 1, data['ether']['src'], data['src_ip'],
+                              (timestamp2unixtime(data['flow']['start']),
+                               int(timestamp2unixtime(data['flow']['end'])-timestamp2unixtime(data['flow']['start'])), 1, data['ether']['src'], data['src_ip'],
                                data['src_port'], data['dest_ip'], data['dest_port'],
                                data['proto'], data['app_proto'], data['flow']['bytes_toserver'],
                                data['flow']['bytes_toclient'], hostname, hostname_type))
+                    if c.rowcount!=1:
+                        logging.error("Can't insert flow")
                 except Exception as e:
                     print(e)
 
@@ -282,13 +285,13 @@ while True:
                      hostname = m.group(0)
             if not hostname:
                 continue
-            active_flows[data['flow_id']]=(int(time.time()), data['ether']['src'], data['src_ip'], data['src_port'], data['dest_ip'], data['dest_port'], data['proto'], 'tls', hostname)
+            active_flows[data['flow_id']]=(time.time(), data['ether']['src'], data['src_ip'], data['src_port'], data['dest_ip'], data['dest_port'], data['proto'], 'tls', hostname)
 
         # Store HTTP details of flow
         if data['event_type'] == 'http' and data['http'] and con:
             if 'hostname' not in data['http'].keys():
                 continue
-            active_flows[data['flow_id']]=(int(time.time()), data['ether']['src'], data['src_ip'], data['src_port'],data['dest_ip'], data['dest_port'], data['proto'], 'http', data['http']['hostname'])
+            active_flows[data['flow_id']]=(time.time(), data['ether']['src'], data['src_ip'], data['src_port'],data['dest_ip'], data['dest_port'], data['proto'], 'http', data['http']['hostname'])
 
         # Commit everything
         if con:

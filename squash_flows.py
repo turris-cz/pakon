@@ -12,7 +12,7 @@ from multiprocessing import Process, Queue
 max_delay = 5
 interval = 3600
 
-con = sqlite3.connect('/var/lib/suricata-monitor.db')
+con = sqlite3.connect('/var/lib/pakon.db')
 c = con.cursor()
 
 def squash(start):

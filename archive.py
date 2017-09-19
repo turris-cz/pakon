@@ -172,15 +172,6 @@ try:
 except:
      print('Table "traffic" already exists')
 try:
-    c.execute('CREATE TABLE dns '
-              '(time integer, client text, name text, type text, data text)')
-except:
-     print('Table "dns" already exists')
-try:
-    c.execute('CREATE INDEX dns_lookup ON dns(client,data,time)')
-except:
-    print('Index "dns_lookup" already exists')
-try:
     c.execute('CREATE INDEX traffic_lookup ON traffic(details, end, src_mac, app_level_hostname)')
 except:
     print('Index "traffic_lookup" already exists')
@@ -208,59 +199,6 @@ try:
     c.execute('INSERT INTO dns SELECT * FROM live.dns')
     con.commit()
     print("Limit set to {}".format(roll[99]))
-    # Fill hostnames from DNS entries
-    print("Solving DNS")
-    updated = 0
-    reverse = 0
-    for row in c.execute('SELECT rowid,end,duration,src_ip,dest_ip FROM traffic WHERE details = 99 AND app_level_hostname = ""'):
-        t = con.cursor()
-        start = row[1] - row[2]
-        t.execute('SELECT name FROM dns WHERE time < ? AND data = ? AND client = ? ORDER BY time DESC LIMIT 1', (start, row[4], row[3]))
-        dns_entry = t.fetchone()
-        name = None
-        last_name = ""
-        while dns_entry is not None and last_name != name:
-            last_name = name
-            name = dns_entry[0]
-            t.execute('SELECT name FROM dns WHERE time < ? AND data = ? AND client = ? AND type = "CNAME" ORDER BY time DESC LIMIT 1', (start, name, row[3]))
-            dns_entry = t.fetchone()
-        if name is not None:
-            t.execute('UPDATE traffic SET app_level_hostname = ? WHERE rowid = ?', (name, row[0]))
-            updated = updated + 1
-    print("Trying reverse lookups")
-    con.commit()
-    q_in = Queue(dns_threads)
-    q_out = Queue(dns_threads)
-    for i in range(0, dns_threads):
-        tp = Process(target=reverse_lookup, args=(q_in,q_out))
-        p.append(tp)
-        tp.start()
-    for row in c.execute('SELECT distinct(dest_ip) FROM traffic WHERE details = 99 AND app_level_hostname = ""'):
-        if not q_in.full():
-            q_in.put(row[0])
-        else:
-            res = q_out.get()
-            t.execute('UPDATE traffic SET app_level_hostname = ? WHERE dest_ip = ? AND app_level_hostname = ""', (res[1], res[0]))
-            updated = updated + t.rowcount
-            reverse = reverse + 1
-    killed_threads = 0
-    print("Reverse lookup done, getting last results")
-    while not q_out.empty() or not q_in.empty():
-        if not q_out.empty():
-            res = q_out.get()
-            t.execute('UPDATE traffic SET app_level_hostname = ? WHERE dest_ip = ? AND app_level_hostname = ""', (res[1], res[0]))
-            updated = updated + t.rowcount
-            reverse = reverse + 1
-        if not q_in.full() and killed_threads < dns_threads:
-            q_in.put(None)
-            killed_threads = killed_threads + 1
-    print("Killing threads")
-    for tp in p:
-        tp.join()
-    print("Filled {} hostname entries ({} from reverse DNS lookup)".format(updated, reverse))
-    con.commit()
-    c.execute('DELETE FROM dns WHERE time < ?', (roll[99] - 12 * 3600,))
-    con.commit()
     last_details = 99
     print("Squashing")
     for det in window.keys():

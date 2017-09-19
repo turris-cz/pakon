@@ -58,11 +58,11 @@ print("Solving DNS")
 print("Using DNS cache...")
 cache = 0
 reverse = 0
-for row in c.execute('SELECT start, src_ip, dest_ip FROM traffic WHERE start >= ? AND app_hostname_type = 0', (start,)):
-    name = get_name_from_cache(row[0], row[1], row[2])
+for row in c.execute('SELECT rowid, start, src_ip, dest_ip FROM traffic WHERE start >= ? AND app_hostname_type = 0', (start,)):
+    name = get_name_from_cache(row[1], row[2], row[3])
     if name:
         t = con.cursor()
-        t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 2 WHERE start = ?', (name, row[0]))
+        t.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 2 WHERE rowid = ?', (name, row[0]))
         cache = cache + 1
 print(str(cache)+" records filled from DNS cache")
 print("Trying reverse lookups...")
@@ -85,5 +85,5 @@ while not q_out.empty():
     reverse = reverse + 1
 print(str(reverse)+" records filled from reverse lookups")
 con.commit()
-c.execute('DELETE FROM dns WHERE time < ?', (now-12*3600, ))
+c.execute('DELETE FROM dns WHERE time < ?', (start-3600, ))
 con.commit()

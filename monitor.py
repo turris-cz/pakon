@@ -33,43 +33,47 @@ con = False
 
 # prepare the database for storing logged data
 try:
-	con = sqlite3.connect('/var/lib/pakon.db')
+    con = sqlite3.connect('/var/lib/pakon.db')
 except:
-	logging.error("Can't open database!")
-	sys.exit(1)
+    logging.error("Can't open database!")
+    sys.exit(1)
 
 # Create database if it was empty
 c = con.cursor()
 try:
-	c.execute('CREATE TABLE traffic '
-				'(flow_id integer, start real, duration integer,'
-				'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
-				'proto text, app_proto text, bytes_send integer, '
-				'bytes_received integer, app_hostname text, app_hostname_type integer)')
+    c.execute('CREATE TABLE traffic '
+                '(flow_id integer, start real, duration integer,'
+                'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
+                'proto text, app_proto text, bytes_send integer, '
+                'bytes_received integer, app_hostname text)')
 #app_hostname_type: 0 - unknown, 1 - tls/http(app level), 2 - dns, 3 - reverse lookup
 except:
-	logging.debug('Table "traffic" already exists')
+    logging.debug('Table "traffic" already exists')
 # flow_ids are only unique (and meaningful) during one run of this script
 try:
-	c.execute('UPDATE traffic SET flow_id = NULL')
+    c.execute('UPDATE traffic SET flow_id = NULL')
 except:
-	logging.debug('Error cleaning flow_id')
+    logging.debug('Error cleaning flow_id')
 try:
-	c.execute('CREATE INDEX start ON traffic(start)')
-	c.execute('CREATE INDEX flow_id ON traffic(flow_id) WHERE flow_id IS NOT NULL')
+    c.execute('CREATE INDEX start ON traffic(start)')
+    c.execute('CREATE INDEX flow_id ON traffic(flow_id) WHERE flow_id IS NOT NULL')
 except:
-	logging.debug('Indexes for table "traffic" already exists')
+    logging.debug('Indexes for table "traffic" already exists')
 try:
-	c.execute('CREATE TABLE dns '
-				'(time integer, client text, name text, type text, data text)')
+    c.execute('CREATE TABLE dns '
+                '(time integer, client text, name text, type text, data text)')
 except:
-	logging.debug('Table "dns" already exists')
+    logging.debug('Table "dns" already exists')
 try:
-	c.execute('CREATE TABLE settings '
-				'(key text, value integer)')
-	c.execute('INSERT INTO settings VALUES (?, ?)', ('db_schema_version', 1))
+    c.execute('CREATE INDEX tdc ON dns(time,data,client)')
 except:
-	logging.debug('Table "settings" already exists')
+    logging.debug('Index for table "dns" already exists')
+try:
+    c.execute('CREATE TABLE settings '
+                '(key text, value integer)')
+    c.execute('INSERT INTO settings VALUES (?, ?)', ('db_schema_version', 1))
+except:
+    logging.debug('Table "settings" already exists')
 
 # Main loop
 
@@ -119,23 +123,17 @@ while True:
         if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
             data['ether']={}
             data['ether']['src']=''
-        if data['event_type'] == 'dns' and con:
+        if data['event_type'] == 'dns' and data['dns']:
             logging.debug('Got dns!')
-            if data['dns'] and data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME') and con:
-                c.execute('SELECT data FROM dns WHERE client = ? AND name = ? ORDER BY time LIMIT 1',
-                          (data['dest_ip'], data['dns']['rrname']))
-                row = c.fetchone()
-                if row is None or row[0] != data['dns']['rdata']:
-                    logging.debug('Saving DNS data')
-                    if row:
-                        logging.debug(' -> ' + row[0] + ' != ' + data['dns']['rdata'])
-                    c.execute('INSERT INTO dns VALUES (?,?,?,?,?)',
-                              (timestamp2unixtime(data['timestamp']),
-                              data['dest_ip'], data['dns']['rrname'], data['dns']['rrtype'],
-                              data['dns']['rdata']))
+            if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
+                logging.debug('Saving DNS data')
+                c.execute('INSERT INTO dns VALUES (?,?,?,?,?)',
+                            (timestamp2unixtime(data['timestamp']),
+                            data['dest_ip'], data['dns']['rrname'], data['dns']['rrtype'],
+                            data['dns']['rdata']))
 
         # Store final counters of flow - UPDATE flow, set duration, counters, app_proto and erase flow_id
-        if data['event_type'] == 'flow' and data['flow'] and con and data['proto'] in ['TCP', 'UDP']:
+        if data['event_type'] == 'flow' and data['flow'] and data['proto'] in ['TCP', 'UDP']:
             logging.debug('Got flow!')
             if 'app_proto' not in data.keys():
                 data['app_proto'] = 'unknown'
@@ -149,7 +147,7 @@ while True:
                     logging.debug("Can't update flow")
 
         # Store TLS details of flow - UPDATE flow, set hostname and app_proto
-        if data['event_type'] == 'tls' and data['tls'] and con:
+        if data['event_type'] == 'tls' and data['tls']:
             logging.debug('Got tls!')
             hostname = ''
             if 'sni' in data['tls'].keys():
@@ -162,32 +160,31 @@ while True:
                      hostname = m.group(0)
             if not hostname:
                 continue
-            c.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 1, app_proto = "tls" WHERE flow_id = ?', (hostname, data['flow_id']))
+            c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "tls" WHERE flow_id = ?', (hostname, data['flow_id']))
             if c.rowcount!=1:
                 logging.debug("Can't update flow")
 
         # Store HTTP details of flow - UPDATE flow, set hostname and app_proto
-        if data['event_type'] == 'http' and data['http'] and con:
+        if data['event_type'] == 'http' and data['http']:
             if 'hostname' not in data['http'].keys():
                 continue
-            c.execute('UPDATE traffic SET app_hostname = ?, app_hostname_type = 1, app_proto = "http" WHERE flow_id = ?', (data['http']['hostname'], data['flow_id']))
+            c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?', (data['http']['hostname'], data['flow_id']))
             if c.rowcount!=1:
                 logging.debug("Can't update flow")
 
         # Store flow - INSERT with many fiels NULL/zeros
-        if data['event_type'] == 'flow_start' and data['flow'] and con and data['proto'] in ['TCP', 'UDP']:
+        if data['event_type'] == 'flow_start' and data['flow'] and data['proto'] in ['TCP', 'UDP']:
             if 'app_proto' not in data.keys():
                 data['app_proto'] = 'unknown'
             if data['app_proto'] in ['failed', 'dns']:
                 continue
-            c.execute('INSERT INTO traffic VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, 0)',
+            c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         (data['flow_id'], timestamp2unixtime(data['flow']['start']),
                         data['ether']['src'], data['src_ip'],
                         data['src_port'], data['dest_ip'], data['dest_port'],
                         data['proto'], data['app_proto']))
         # Commit everything
-        if con:
-            con.commit()
+        con.commit()
 
     except KeyboardInterrupt:
         exit_gracefully()

@@ -57,7 +57,7 @@ except:
     logging.debug('Error cleaning flow_id')
 try:
     c.execute('CREATE INDEX start ON traffic(start)')
-    c.execute('CREATE INDEX flow_id ON traffic(flow_id) WHERE flow_id IS NOT NULL')
+    c.execute('CREATE UNIQUE INDEX flow_id ON traffic(flow_id) WHERE flow_id IS NOT NULL')
 except:
     logging.debug('Indexes for table "traffic" already exists')
 try:

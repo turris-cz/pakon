@@ -51,7 +51,7 @@ except:
     logging.debug('Table "traffic" already exists')
 # flow_ids are only unique (and meaningful) during one run of this script
 try:
-    c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0')
+    c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
     con.commit()
 except:
     logging.debug('Error cleaning flow_id')

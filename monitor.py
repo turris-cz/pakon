@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import fileinput
 import json
@@ -29,54 +29,18 @@ def timestamp2unixtime(timestamp):
     timestamp = timestamp*1.0 + dt.microsecond*1.0/1000000
     return timestamp
 
-con = False
+if not os.path.isfile('/var/lib/pakon.db'):
+    subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
+con = sqlite3.connect('/var/lib/pakon.db')
 
-# prepare the database for storing logged data
-try:
-    con = sqlite3.connect('/var/lib/pakon.db')
-except:
-    logging.error("Can't open database!")
-    sys.exit(1)
-
-# Create database if it was empty
 c = con.cursor()
-try:
-    c.execute('CREATE TABLE traffic '
-                '(flow_id integer, start real, duration integer,'
-                'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
-                'proto text, app_proto text, bytes_send integer, '
-                'bytes_received integer, app_hostname text)')
-#app_hostname_type: 0 - unknown, 1 - tls/http(app level), 2 - dns, 3 - reverse lookup
-except:
-    logging.debug('Table "traffic" already exists')
 # flow_ids are only unique (and meaningful) during one run of this script
 try:
     c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
     con.commit()
 except:
     logging.debug('Error cleaning flow_id')
-try:
-    c.execute('CREATE INDEX start ON traffic(start)')
-    c.execute('CREATE UNIQUE INDEX flow_id ON traffic(flow_id) WHERE flow_id IS NOT NULL')
-except:
-    logging.debug('Indexes for table "traffic" already exists')
-try:
-    c.execute('CREATE TABLE dns '
-                '(time integer, client text, name text, type text, data text)')
-except:
-    logging.debug('Table "dns" already exists')
-try:
-    c.execute('CREATE INDEX tdc ON dns(time,data,client)')
-except:
-    logging.debug('Index for table "dns" already exists')
-try:
-    c.execute('CREATE TABLE settings '
-                '(key text, value integer)')
-    c.execute('INSERT INTO settings VALUES (?, ?)', ('db_schema_version', 1))
-except:
-    logging.debug('Table "settings" already exists')
 
-# Main loop
 
 def exit_gracefully(signum, frame):
     global c, con
@@ -193,6 +157,3 @@ while True:
     except IOError as e:
         if e.errno != errno.EINTR:
             raise
-
-logging.error("End of data?")
-logging.error("This may mean that suricata_conntrack_flows.py doesn't exist/is broken...")

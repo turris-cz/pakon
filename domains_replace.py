@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 import sys
@@ -26,8 +26,6 @@ class MultiReplace:
         def one_xlat(match):
             return self.adict[match.group(1)]
         return self.rx.sub(one_xlat, text)
-
-
 
 
 adict={}

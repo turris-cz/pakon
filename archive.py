@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import fileinput
 import os, os.path
@@ -14,11 +14,12 @@ import signal
 import errno
 import logging
 
+__ARCHIVE_DB_PATH__ = "/srv/pakon/pakon-archive.db"
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 delimiter = '__uci__delimiter__'
 
-# uci get wrapper
 def uci_get(opt):
     chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -29,7 +30,10 @@ def uci_get(opt):
     else:
         return out
 
-con = sqlite3.connect('/srv/pakon/pakon-archive.db')
+if not os.path.isfile(__ARCHIVE_DB_PATH__):
+	subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
+con = sqlite3.connect(__ARCHIVE_DB_PATH__)
+con.row_factory = sqlite3.Row
 
 def squash(from_details, to_details, start, window, honor_app_proto, honor_app_hostname):
     global con
@@ -86,56 +90,36 @@ def squash(from_details, to_details, start, window, honor_app_proto, honor_app_h
 
 # Create database if it was empty
 c = con.cursor()
-try:
-    c.execute('CREATE TABLE traffic '
-                '(start real, duration integer, details integer,'
-                'src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, '
-                'proto text, app_proto text, bytes_send integer, '
-                'bytes_received integer, app_hostname text)')
-except:
-     logging.debug('Table "traffic" already exists')
-try:
-    c.execute('CREATE INDEX traffic_lookup ON traffic(details, start, src_mac)')
-except:
-    logging.debug('Index "traffic_lookup" already exists')
 
 # Main loop
 
 now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 start = now-3600*24 #move flows from live DB to archive after 24hours
 
-try:
-    c.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
-    c.execute('INSERT INTO traffic SELECT start, duration, 99, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
-    logging.info("moved {} flows from live to archive".format(c.rowcount))
-    c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
-    c.execute('VACUUM live')
-    con.commit()
-    #TODO: move constants to configuration
-    logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*24,60,True,True)))
-    logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900,True,True)))
-    logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,3600,False,True)))
-    logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600,False,False)))
-    c.execute('DELETE FROM traffic WHERE start < ?', (3600*24*28,))
-    c.execute('VACUUM')
-    con.commit()
+c.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
+c.execute('INSERT INTO traffic SELECT start, duration, 99, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
+logging.info("moved {} flows from live to archive".format(c.rowcount))
+c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
+c.execute('VACUUM live')
+con.commit()
+#TODO: move constants to configuration
+logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*24,60,True,True)))
+logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900,True,True)))
+logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,3600,False,True)))
+logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600,False,False)))
+c.execute('DELETE FROM traffic WHERE start < ?', (3600*24*28,))
+c.execute('VACUUM')
+con.commit()
 
-    c.execute('SELECT COUNT(*) FROM live.traffic')
-    logging.info("{} flows in live database".format(c.fetchone()[0]))
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = 99')
-    logging.info("{} flows in archive on details level 99".format(c.fetchone()[0]))
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = 80')
-    logging.info("{} flows in archive on details level 80".format(c.fetchone()[0]))
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = 70')
-    logging.info("{} flows in archive on details level 70".format(c.fetchone()[0]))
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = 60')
-    logging.info("{} flows in archive on details level 60".format(c.fetchone()[0]))
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = 50')
-    logging.info("{} flows in archive on details level 50".format(c.fetchone()[0]))
-
-except KeyboardInterrupt:
-    exit_gracefully()
-
-except IOError as e:
-    if e.errno != errno.EINTR:
-        raise
+c.execute('SELECT COUNT(*) FROM live.traffic')
+logging.info("{} flows in live database".format(c.fetchone()[0]))
+c.execute('SELECT COUNT(*) FROM traffic WHERE details = 99')
+logging.info("{} flows in archive on details level 99".format(c.fetchone()[0]))
+c.execute('SELECT COUNT(*) FROM traffic WHERE details = 80')
+logging.info("{} flows in archive on details level 80".format(c.fetchone()[0]))
+c.execute('SELECT COUNT(*) FROM traffic WHERE details = 70')
+logging.info("{} flows in archive on details level 70".format(c.fetchone()[0]))
+c.execute('SELECT COUNT(*) FROM traffic WHERE details = 60')
+logging.info("{} flows in archive on details level 60".format(c.fetchone()[0]))
+c.execute('SELECT COUNT(*) FROM traffic WHERE details = 50')
+logging.info("{} flows in archive on details level 50".format(c.fetchone()[0]))

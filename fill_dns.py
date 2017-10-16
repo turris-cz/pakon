@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import os
 import sys
@@ -29,10 +29,8 @@ def reverse_lookup(q_in, q_out):
         signal.alarm(dns_timeout)
         try:
             name = socket.gethostbyaddr(ip)[0]
-            #print(ip+" -> "+name)
             q_out.put((ip, name))
         except:
-            #print("Can't resolve "+ip)
             pass
         signal.alarm(0)
 

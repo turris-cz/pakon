@@ -10,6 +10,7 @@ import signal
 import errno
 import re
 import json
+import glob
 
 interval = 3600
 
@@ -30,15 +31,16 @@ class MultiReplace:
 
 adict={}
 try:
-    with open('/usr/share/pakon-light/domains_replace.conf') as f:
-        for line in f:
-	    match = re.match('\s*"([^"]+)"\s*:\s*"([^"]+)"\s*', line)
-	    if not match:
-	        if re.match('\s*', line): #ignore empty lines
-		    continue
-	        print("invalid line: "+line)
-		continue
-	    adict[match.group(1)]=match.group(2)
+    for fn in glob.glob("/usr/share/pakon-light/domains_replace/*.conf"):
+        with open(fn) as f:
+            for line in f:
+                match = re.match('\s*"([^"]+)"\s*:\s*"([^"]+)"\s*', line)
+                if not match:
+                    if re.match('\s*', line): #ignore empty lines
+                        continue
+                    print("invalid line: "+line)
+                    continue
+                adict[match.group(1)]=match.group(2)
 except IOError:
     print("can't load domains_services file")
     sys.exit(1)

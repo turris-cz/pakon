@@ -14,9 +14,86 @@ import sqlite3
 import signal
 import errno
 import logging
+import glob
+import collections
+import queue
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+class LRUCache:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.cache = collections.OrderedDict()
+
+    def get(self, key):
+        try:
+            value = self.cache.pop(key)
+            self.cache[key] = value
+            return value
+        except KeyError:
+            return None
+
+    def set(self, key, value):
+        try:
+            self.cache.pop(key)
+        except KeyError:
+            if len(self.cache) >= self.capacity:
+                self.cache.popitem(last=False)
+        self.cache[key] = value
+
+class DNSCache:
+    def __init__(self):
+        self.cache = LRUCache(1000)
+
+    def set(self, src_ip, question, answer):
+        self.cache.set(src_ip+":"+answer, question)
+
+    def get(self, src_ip, answer):
+        return self.cache.get(src_ip+":"+answer)
+
+class MultiReplace:
+    "perform replacements specified by regex and adict all at once"
+    " The regex is constructed such that it matches the whole string (.* in the beginnin and end),"
+    " the actual key from adict is the first group of match (ignoring possible prefix and suffix)."
+    " The whole string is then replaced (the replacement is specified by adict)"
+    def __init__(self, adict={}):
+        self.setup(adict)
+
+    def setup(self, adict):
+        self.adict = adict
+        self.rx = re.compile("^.*("+'|'.join(map(re.escape, adict))+").*$")
+
+    def replace(self, text):
+        def one_xlat(match):
+            return self.adict[match.group(1)]
+        return self.rx.sub(one_xlat, text)
+
+def get_dns_hostname(src_ip, dest_ip):
+    global dns_cache
+    name_ = dns_cache.get(src_ip, dest_ip)
+    name = name_
+    while name_:
+        name = name_
+        name_ = dns_cache.get(src_ip, name)
+    return name
+
+def load_domain_replaces():
+    adict={}
+    try:
+        for fn in glob.glob("/usr/share/pakon-light/domains_replace/*.conf"):
+            with open(fn) as f:
+                for line in f:
+                    match = re.match('\s*"([^"]+)"\s*:\s*"([^"]+)"\s*', line)
+                    if not match:
+                        if re.match('\s*', line): #ignore empty lines
+                            continue
+                        print("invalid line: "+line)
+                        continue
+                    adict[match.group(1)]=match.group(2)
+    except IOError:
+        print("can't load domains_services file")
+    return adict
 
 # converts textual timestamp to unixtime
 # time string is always assumed to be in local time, the timezone part in string is ignored
@@ -27,12 +104,10 @@ def timestamp2unixtime(timestamp):
     return timestamp
 
 def handle_dns(data, c):
+    global dns_cache
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
         logging.debug('Saving DNS data')
-        c.execute('INSERT INTO dns VALUES (?,?,?,?,?)',
-                    (timestamp2unixtime(data['timestamp']),
-                    data['dest_ip'], data['dns']['rrname'], data['dns']['rrtype'],
-                    data['dns']['rdata']))
+        dns_cache.set(data['dest_ip'],data['dns']['rrname'],data['dns']['rdata'])
 
 def handle_flow(data, c):
     if data['proto'] not in ['TCP', 'UDP']:
@@ -49,6 +124,7 @@ def handle_flow(data, c):
             logging.debug("Can't update flow")
 
 def handle_tls(data, c):
+    global domain_replace
     hostname = ''
     if 'sni' in data['tls'].keys():
         hostname = data['tls']['sni']
@@ -59,29 +135,34 @@ def handle_tls(data, c):
                 hostname = m.group(0)
     if not hostname:
         return
-    c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "tls" WHERE flow_id = ?', (hostname, data['flow_id']))
+    c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "tls" WHERE flow_id = ?', (domain_replace.replace(hostname), data['flow_id']))
     if c.rowcount!=1:
         logging.debug("Can't update flow")
 
 def handle_http(data, c):
+    global domain_replace
     if 'hostname' not in data['http'].keys():
         return
-    c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?', (data['http']['hostname'], data['flow_id']))
+    c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?', (domain_replace.replace(data['http']['hostname']), data['flow_id']))
     if c.rowcount!=1:
         logging.debug("Can't update flow")
 
 def handle_flow_start(data, c):
+    global domain_replace
     if data['proto'] not in ['TCP', 'UDP']:
         return
     if 'app_proto' not in data.keys():
         data['app_proto'] = '?'
     if data['app_proto'] in ['failed', 'dns']:
         return
-    c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
+    if hostname:
+        hostname = domain_replace.replace(hostname)
+    c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, app_hostname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (data['flow_id'], timestamp2unixtime(data['flow']['start']),
                 data['ether']['src'], data['src_ip'],
                 data['src_port'], data['dest_ip'], data['dest_port'],
-                data['proto'], data['app_proto']))
+                data['proto'], data['app_proto'], hostname))
 
 def exit_gracefully(signum, frame):
     global con, conntrack
@@ -95,6 +176,10 @@ def exit_gracefully(signum, frame):
     conntrack.kill()
     sys.exit(0)
 
+def reload_replaces(signum, frame):
+    global domain_replace
+    domain_replace.set(load_domain_replaces())
+
 if not os.path.isfile('/var/lib/pakon.db'):
     subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
 con = sqlite3.connect('/var/lib/pakon.db')
@@ -107,57 +192,70 @@ try:
 except:
     logging.debug('Error cleaning flow_id')
 
-signal.signal(signal.SIGINT, exit_gracefully)
-signal.signal(signal.SIGTERM, exit_gracefully)
+dns_cache = DNSCache()
+domain_replace = MultiReplace(load_domain_replaces())
 conntrack=None
-
-devnull = open(os.devnull, 'w')
-
 try:
+    devnull = open(os.devnull, 'w')
     conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
 except Exception as e:
     logging.error("Can't run flows_conntrack.py")
     logging.error(e)
     sys.exit(1)
+if not os.path.isfile('/var/lib/pakon.db'):
+    subprocess.call(['/usr/bin/python2', '/usr/libexec/pakon-light/create_db.py'])
+con = sqlite3.connect('/var/lib/pakon.db')
+c = con.cursor()
+try:
+    c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
+    con.commit()
+except:
+    logging.debug('Error cleaning flow_id')
 
-logging.debug("Listening...")
+signal.signal(signal.SIGINT, exit_gracefully)
+signal.signal(signal.SIGTERM, exit_gracefully)
+signal.signal(signal.SIGUSR1, reload_replaces)
 
-
-while True:
-    try:
-        logging.debug('Getting data...')
-        line = conntrack.stdout.readline().decode()
-        if not line:
-            break
-        line = line.strip()
-        logging.debug(line)
-        if not line:
-            continue
+def main():
+    # flow_ids are only unique (and meaningful) during one run of this script
+    logging.debug("Listening...")
+    while True:
         try:
-            data = json.loads(line)
-        except ValueError:
-            logging.warn("Error decoding json")
-            continue
-        if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
-            data['ether']={}
-            data['ether']['src']=''
-        if data['event_type'] == 'dns' and data['dns']:
-            handle_dns(data, c)
-        elif data['event_type'] == 'flow' and data['flow']:
-            handle_flow(data, c)
-        elif data['event_type'] == 'tls' and data['tls']:
-            handle_tls(data, c)
-        elif data['event_type'] == 'http' and data['http']:
-            handle_http(data, c)
-        elif data['event_type'] == 'flow_start' and data['flow']:
-            handle_flow_start(data, c)
-        else:
-            logging.warn("Unknown event type")
-        con.commit()
+            line = conntrack.stdout.readline().decode()
+            if not line:
+                break
+            line = line.strip()
+            logging.debug(line)
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+            except ValueError:
+                logging.warn("Error decoding json")
+                continue
+            if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
+                data['ether']={}
+                data['ether']['src']=''
+            if data['event_type'] == 'dns' and data['dns']:
+                handle_dns(data, c)
+            elif data['event_type'] == 'flow' and data['flow']:
+                handle_flow(data, c)
+            elif data['event_type'] == 'tls' and data['tls']:
+                handle_tls(data, c)
+            elif data['event_type'] == 'http' and data['http']:
+                handle_http(data, c)
+            elif data['event_type'] == 'flow_start' and data['flow']:
+                handle_flow_start(data, c)
+            else:
+                logging.warn("Unknown event type")
+            con.commit()
 
-    except KeyboardInterrupt:
-        exit_gracefully()
+        except KeyboardInterrupt:
+            exit_gracefully()
 
-    except IOError as e:
-        if e.errno != errno.EINTR:
-            raise
+        except IOError as e:
+            if e.errno != errno.EINTR:
+                raise
+
+if __name__ == "__main__":
+    main()

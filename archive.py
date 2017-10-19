@@ -41,49 +41,48 @@ def squash(from_details, to_details, start, window, honor_app_proto, honor_app_h
     logging.debug("Squashing flows - from detail_level {} to detail_level {}".format(from_details, to_details))
     to_be_deleted = []
     for row in c.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start < ? ORDER BY start', (from_details, start,)):
-        if row[0] in to_be_deleted:
+        if row['rowid'] in to_be_deleted:
             continue
         logging.debug("trying:")
         logging.debug(row)
-        current_start = float(row[1])
-        current_end = float(row[2])
-        current_bytes_send = int(row[11])
-        current_bytes_received = int(row[12])
-        mac = row[4]
-        src_ip = row[5]
-        src_port = row[6]
-        dest_ip = row[7]
-        dest_port = row[8]
-        proto = row[9]
-        app_proto = row[10]
-        app_hostname = row[13]
+        current_start = float(row['start'])
+        current_end = float(row['end'])
+        current_bytes_send = int(row['bytes_send'])
+        current_bytes_received = int(row['bytes_received'])
+        src_ip = row['src_ip']
+        src_port = row['src_port']
+        dest_ip = row['dest_ip']
+        dest_port = row['dest_port']
+        proto = row['proto']
+        app_proto = row['app_proto']
+        app_hostname = row['app_hostname']
         tmp = con.cursor()
-        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? ORDER BY start', (from_details, current_start, current_start+window, mac)):
-            if honor_app_proto and entry[10]!=row[10]:
+        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'])):
+            if honor_app_proto and entry['app_proto']!=row['app_proto']:
                 continue
-            if honor_app_hostname and entry[13]!=row[13]:
+            if honor_app_hostname and entry['app_hostname']!=row['app_hostname']:
                 continue
             logging.debug("joining with:")
             logging.debug(entry)
-            current_end = max(current_end, float(entry[2]))
-            current_bytes_send += int(entry[11])
-            current_bytes_received += int(entry[12])
-            if src_ip!=entry[5]:
+            current_end = max(current_end, float(entry['end']))
+            current_bytes_send += int(entry['bytes_send'])
+            current_bytes_received += int(entry['bytes_received'])
+            if src_ip != entry['src_ip']:
                 src_ip = ''
-            if src_port!=entry[6]:
+            if src_port != entry['src_port']:
                 src_port = ''
-            if dest_ip!=entry[7]:
+            if dest_ip != entry['dest_ip']:
                 dest_ip = ''
-            if dest_port!=entry[8]:
+            if dest_port != entry['dest_port']:
                 dest_port = ''
-            if proto!=entry[9]:
+            if proto != entry['proto']:
                 proto = ''
-            if app_proto!=entry[10]:
+            if app_proto != entry['app_proto']:
                 app_proto = ''
-            if app_hostname!=entry[13]:
+            if app_hostname != entry['app_hostname']:
                 app_hostname = ''
-            to_be_deleted.append(entry[0])
-        tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, dest_port = ?, proto = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, dest_port, proto, app_proto, current_bytes_send, current_bytes_received, app_hostname, row[0]))
+            to_be_deleted.append(entry['rowid'])
+        tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, dest_port = ?, proto = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, dest_port, proto, app_proto, current_bytes_send, current_bytes_received, app_hostname, row['rowid']))
     for tbd in to_be_deleted:
         c.execute('DELETE FROM traffic WHERE rowid = ?', (tbd,))
     return len(to_be_deleted)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import fileinput
 import json
@@ -130,17 +130,17 @@ logging.debug("Listening...")
 while True:
     try:
         logging.debug('Getting data...')
-        line = conntrack.stdout.readline()
+        line = conntrack.stdout.readline().decode()
         if not line:
             break
-        line = string.strip(line)
+        line = line.strip()
         logging.debug(line)
         if not line:
             continue
-        skip = False
         try:
             data = json.loads(line)
-        except:
+        except ValueError:
+            logging.warn("Error decoding json")
             continue
         if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
             data['ether']={}

@@ -78,16 +78,17 @@ def get_dns_hostname(src_ip, dest_ip):
         name_ = dns_cache.get(src_ip, name)
     return name
 
-def load_domain_replaces():
+def load_replaces():
     adict={}
     try:
         for fn in glob.glob("/usr/share/pakon-light/domains_replace/*.conf"):
             with open(fn) as f:
                 for line in f:
-                    match = re.match('\s*"([^"]+)"\s*:\s*"([^"]+)"\s*', line)
+                    line=line.strip()
+                    if not line:
+                        continue
+                    match = re.match('"([^"]+)"\s*:\s*"([^"]+)"', line)
                     if not match:
-                        if re.match('\s*', line): #ignore empty lines
-                            continue
                         print("invalid line: "+line)
                         continue
                     adict[match.group(1)]=match.group(2)
@@ -178,7 +179,8 @@ def exit_gracefully(signum, frame):
 
 def reload_replaces(signum, frame):
     global domain_replace
-    domain_replace.set(load_domain_replaces())
+    logging.info("reloading domain replaces")
+    domain_replace.setup(load_replaces())
 
 if not os.path.isfile('/var/lib/pakon.db'):
     subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
@@ -193,7 +195,7 @@ except:
     logging.debug('Error cleaning flow_id')
 
 dns_cache = DNSCache()
-domain_replace = MultiReplace(load_domain_replaces())
+domain_replace = MultiReplace(load_replaces())
 conntrack=None
 try:
     devnull = open(os.devnull, 'w')

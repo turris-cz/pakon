@@ -27,7 +27,7 @@ def timezone_offset():
     return utc_offset
 
 def build_filter(query):
-    now = time.time() - timezone_offset()
+    now = time.time()# - timezone_offset()
     if "start" in query:
         time_from = now - int(query["start"])
     else:
@@ -39,11 +39,13 @@ def build_filter(query):
     where_clause="(start BETWEEN ? AND ? OR (start+duration) BETWEEN ? AND ?)"
     where_parameters=[time_from, time_to, time_from, time_to]
     if "mac" in query:
-        where_clause+=" AND src_mac LIKE ?"
-        where_parameters.append(query["mac"])
+        fill=['?' for m in query["mac"]]
+        where_clause+=" AND src_mac IN ("+",".join(fill)+")"
+        where_parameters+=query["mac"]
     if "hostname" in query:
-        where_clause+=" AND app_hostname LIKE ?"
-        where_parameters.append(query["hostname"])
+        fill=['?' for m in query["hostname"]]
+        where_clause+=" AND app_hostname IN ("+",".join(fill)+")"
+        where_parameters+=query["hostname"]
     return (time_from, time_to, where_clause, where_parameters)
 
 
@@ -53,6 +55,8 @@ def load_ignores():
         for fn in glob.glob("/usr/share/pakon-light/domains_ignore/*.txt"):
             with open(fn) as f:
                 for line in f:
+                    if not line or line[0]=='#':
+                        continue
                     ignored[line.strip()]=1
     except IOError:
         print("can't load domains_ignore file")
@@ -71,7 +75,7 @@ def query(query):
         result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,app_hostname,dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
-        ORDER BY app_hostname,start""", where_parameters + where_parameters)
+        ORDER BY app_hostname,app_proto,start""", where_parameters + where_parameters)
         last = [i for i in c.fetchone()]
         for row in result:
             if filter and row[3] in ignored:
@@ -99,7 +103,7 @@ def query(query):
                 else:
                     last2[1]=max(last2[1],row[0]+row[1])
                 last[4]=(last[4] if row[4]==last[4] else "")
-                last[5]=(last[5] if row[5]==last[5] else "")
+                last[5]=(row[5] if row[5]==last[5] or last[5]=='?' else "?")
                 last[6]+=int(row[6])
                 last[7]+=int(row[7])
             else:
@@ -109,25 +113,26 @@ def query(query):
         domains.append(last)
         domains = sorted(domains, key=lambda x: x[6]+x[7])
     else:
-        result = c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
+        result = c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
-        select start,duration,src_mac,app_hostname,dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
-        ORDER BY app_hostname,start""", where_parameters + where_parameters)
+        select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
+        ORDER BY app_hostname,app_proto,start""", where_parameters + where_parameters)
         last = [i for i in c.fetchone()]
         for row in result:
+            if not row[3]:
+                continue
             if filter and row[3] in ignored:
                 continue
             row=[i for i in row]
             row[0]+=timezone_offset()
             if not row[3]:
                 row[3]=''
-            if last[3]==row[3]:
-                if row[0] > last[0]+last[1]+3:
+            if last[3]==row[3] and last[4]==row[4]:
+                if row[0] > last[0]+last[1]+1:
                     domains.append(last)
                 else:
                     last[1]=max(last[1],int(row[0]-last[0]+row[1]))
-                    last[4]=(last[4] if row[4]==last[4] else "")
-                    last[5]=(last[5] if row[5]==last[5] else "")
+                    last[5]=(row[5] if row[5]==last[5] or last[5]=='?' else "?")
                     last[6]+=row[6]
                     last[7]+=row[7]
                     continue
@@ -136,6 +141,14 @@ def query(query):
             last=[i for i in row]
         domains.append(last)
         domains = sorted(domains, key=lambda x: x[0])
+    proto_ports = {'22/tcp': 'ssh', '80/tcp': 'http', '443/tcp': 'https', '53/tcp': 'dns', '53/udp': 'dns', '143/tcp': 'imap', '993/tcp': 'imaps', '587/tcp': 'smtp', '995/tcp': 'pop3s', '25/tcp': 'smtp', '465/tcp': 'smtps', '110/tcp': 'pop3'}
+    #This is ugly hack for missing velues (due to aggregation). This should disappear in the future.
+    proto_ports['/tcp']=''
+    proto_ports['/udp']=''
+    for d in domains:
+        d[0]=datetime.datetime.fromtimestamp(d[0]).strftime('%Y-%m-%d %H:%M:%S')
+        if d[4] in proto_ports:
+            d[4]=proto_ports[d[4]]
     return json.dumps(domains)
 
 print(query(sys.argv[1]))

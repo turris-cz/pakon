@@ -10,12 +10,14 @@ import errno
 import re
 import json
 import subprocess
+import socket
 
-if (len(sys.argv)<2):
-    print("usage: {} query".format(sys.argv[0]))
-    sys.exit(1)
+if (len(sys.argv)>=2):
+    query=sys.argv[1]
+else:
+    query='{}'
 try:
-    response=subprocess.check_output(['/usr/bin/python3', '/usr/libexec/pakon-light/dump.py', sys.argv[1]]).decode()
+    response=subprocess.check_output(['/usr/bin/python3', '/usr/libexec/pakon-light/dump.py', query]).decode()
 except OSError:
     print("error calling dump.py")
     sys.exit(1)
@@ -35,7 +37,6 @@ def size_fmt(num):
 
 data=json.loads(response)
 for i in range(len(data)):
-    data[i][0]=datetime.datetime.fromtimestamp(int(data[i][0])).strftime('%Y-%m-%d %H:%M:%S')
     if data[i][1]==0:
         data[i][1]="<1s"
     else:

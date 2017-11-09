@@ -19,14 +19,11 @@ logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 # converts textual timestamp to unixtime
+# time string is always assumed to be in local time, the timezone part in string is ignored
+# reason is that mktime ignores timezone in datetime object and I don't see any easy way how to do it properly (without pytz)
 def timestamp2unixtime(timestamp):
     dt = datetime.datetime.strptime(timestamp[:-5],'%Y-%m-%dT%H:%M:%S.%f')
-    offset_str = timestamp[-5:]
-    offset = int(offset_str[-4:-2])*60 + int(offset_str[-2:])
-    if offset_str[0] == "+":
-        offset = -offset
-    timestamp = time.mktime(dt.timetuple()) + offset * 60
-    timestamp = timestamp*1.0 + dt.microsecond*1.0/1000000
+    timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond)/1000000
     return timestamp
 
 def handle_dns(data, c):

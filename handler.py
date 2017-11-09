@@ -13,13 +13,8 @@ import json
 import glob
 import socketserver
 
-def timezone_offset():
-    is_dst = time.daylight and time.localtime().tm_isdst > 0
-    utc_offset = - (time.altzone if is_dst else time.timezone)
-    return utc_offset
-
 def build_filter(query):
-    now = time.time() - timezone_offset()
+    now = time.time()
     if "start" in query:
         time_from = now - int(query["start"])
     else:

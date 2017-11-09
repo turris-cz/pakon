@@ -11,15 +11,7 @@ import errno
 import re
 import json
 import glob
-
-con = sqlite3.connect('/var/lib/pakon.db')
-c = con.cursor()
-c.execute('ATTACH DATABASE "/srv/pakon/pakon-archive.db" AS archive')
-
-
-if (len(sys.argv)<2):
-    print("usage: {} query".format(sys.argv[0]))
-    sys.exit(1)
+import socketserver
 
 def timezone_offset():
     is_dst = time.daylight and time.localtime().tm_isdst > 0
@@ -27,7 +19,7 @@ def timezone_offset():
     return utc_offset
 
 def build_filter(query):
-    now = time.time()# - timezone_offset()
+    now = time.time() - timezone_offset()
     if "start" in query:
         time_from = now - int(query["start"])
     else:
@@ -65,7 +57,14 @@ def load_ignores():
 ignored=load_ignores()
 
 def query(query):
-    query = json.loads(query)
+    con = sqlite3.connect('/var/lib/pakon.db')
+    c = con.cursor()
+    c.execute('ATTACH DATABASE "/srv/pakon/pakon-archive.db" AS archive')
+    try:
+        query = json.loads(query)
+    except ValueError:
+        con.close()
+        return '[]'
     (time_from, time_to, where_clause, where_parameters) = build_filter(query)
     aggregate = query["aggregate"] if "aggregate" in query else False
     filter = query["filter"] if "filter" in query else True
@@ -81,7 +80,6 @@ def query(query):
             if filter and row[3] in ignored:
                 continue
             row=[i for i in row]
-            row[0]+=timezone_offset()
             if not row[3]:
                 row[3]=''
             if row[0]<time_from:
@@ -124,7 +122,6 @@ def query(query):
             if filter and row[3] in ignored:
                 continue
             row=[i for i in row]
-            row[0]+=timezone_offset()
             if not row[3]:
                 row[3]=''
             if last[3]==row[3] and last[4]==row[4]:
@@ -149,6 +146,24 @@ def query(query):
         d[0]=datetime.datetime.fromtimestamp(d[0]).strftime('%Y-%m-%d %H:%M:%S')
         if d[4] in proto_ports:
             d[4]=proto_ports[d[4]]
+    con.close()
     return json.dumps(domains)
 
-print(query(sys.argv[1]))
+
+class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        data = self.request.makefile().readline().strip()
+        self.request.sendall((query(data)+"\n").encode())
+
+def main():
+    try:
+        os.unlink("/var/run/pakon-query.sock")
+    except OSError:
+        pass
+    server = socketserver.UnixStreamServer("/var/run/pakon-query.sock", ThreadedTCPRequestHandler)
+    server.serve_forever()
+    server.shutdown()
+    server.server_close()
+
+if __name__ == "__main__":
+    main()

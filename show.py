@@ -79,11 +79,16 @@ if args.no_filter:
 if args.aggregate:
     query["aggregate"]=True
 query=json.dumps(query)
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
-    response=subprocess.check_output(['/usr/bin/python3', '/usr/libexec/pakon-light/dump.py', query]).decode()
-except OSError:
-    print("error calling dump.py")
+    sock.connect("/var/run/pakon-query.sock")
+    sock.sendall((query+"\n").encode())
+    response = sock.makefile().readline().strip()
+except:
+    print("Can't get data from pakon-handler. Is it running?")
     sys.exit(1)
+finally:
+    sock.close()
 
 data=json.loads(response)
 for i in range(len(data)):

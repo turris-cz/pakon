@@ -35,7 +35,7 @@ if not os.path.isfile(__ARCHIVE_DB_PATH__):
 con = sqlite3.connect(__ARCHIVE_DB_PATH__)
 con.row_factory = sqlite3.Row
 
-def squash(from_details, to_details, start, window, honor_app_proto, honor_app_hostname):
+def squash(from_details, to_details, start, window):
     global con
     c = con.cursor()
     logging.debug("Squashing flows - from detail_level {} to detail_level {}".format(from_details, to_details))
@@ -52,16 +52,10 @@ def squash(from_details, to_details, start, window, honor_app_proto, honor_app_h
         src_ip = row['src_ip']
         src_port = row['src_port']
         dest_ip = row['dest_ip']
-        dest_port = row['dest_port']
-        proto = row['proto']
         app_proto = row['app_proto']
         app_hostname = row['app_hostname']
         tmp = con.cursor()
-        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'])):
-            if honor_app_proto and entry['app_proto']!=row['app_proto']:
-                continue
-            if honor_app_hostname and entry['app_hostname']!=row['app_hostname']:
-                continue
+        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? AND app_hostname = ? AND dest_port = ? AND proto = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'], row['app_hostname'], row['dest_port'], row['proto'])):
             logging.debug("joining with:")
             logging.debug(entry)
             current_end = max(current_end, float(entry['end']))
@@ -73,16 +67,12 @@ def squash(from_details, to_details, start, window, honor_app_proto, honor_app_h
                 src_port = ''
             if dest_ip != entry['dest_ip']:
                 dest_ip = ''
-            if dest_port != entry['dest_port']:
-                dest_port = ''
-            if proto != entry['proto']:
-                proto = ''
             if app_proto != entry['app_proto']:
                 app_proto = ''
             if app_hostname != entry['app_hostname']:
                 app_hostname = ''
             to_be_deleted.append(entry['rowid'])
-        tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, dest_port = ?, proto = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, dest_port, proto, app_proto, current_bytes_send, current_bytes_received, app_hostname, row['rowid']))
+        tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, app_proto, current_bytes_send, current_bytes_received, app_hostname, row['rowid']))
     for tbd in to_be_deleted:
         c.execute('DELETE FROM traffic WHERE rowid = ?', (tbd,))
     return len(to_be_deleted)
@@ -102,10 +92,10 @@ c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start
 c.execute('VACUUM live')
 con.commit()
 #TODO: move constants to configuration
-logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*24,60,True,True)))
-logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900,True,True)))
-logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,3600,False,True)))
-logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600,False,False)))
+logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*24,60)))
+logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900)))
+logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,1800)))
+logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600)))
 c.execute('DELETE FROM traffic WHERE start < ?', (3600*24*28,))
 c.execute('VACUUM')
 con.commit()

@@ -53,9 +53,8 @@ def handle_tls(data, c):
     if 'sni' in data['tls'].keys():
         hostname = data['tls']['sni']
     elif 'subject' in data['tls'].keys():
-        hostname = data['tls']['subject']
         #get only CN from suject
-        m = re.search('(?<=CN=)[^,]*', hostname)
+        m = re.search('(?<=CN=)[^,]*', data['tls']['subject'])
         if m:
                 hostname = m.group(0)
     if not hostname:

@@ -26,6 +26,21 @@ def size_fmt(num):
         num /= 1024.0
     return "%.0f%sB" % (num, 'Ti')
 
+def duration_valid(string):
+    if not re.match("[0-9]+[WDhm]?$", string):
+        msg = "%r is not a valid time specification" % string
+        raise argparse.ArgumentTypeError(msg)
+    if string[-1]=="W":
+        return int(string[:-1])*86400*7
+    elif string[-1]=="D":
+        return int(string[:-1])*86400
+    elif string[-1]=="h":
+        return int(string[:-1])*3600
+    elif string[-1]=="m":
+        return int(string[:-1])*60
+    else:
+        return int(string)
+
 def mac_valid(string):
     if not re.match("[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$", string.lower()):
         msg = "%r is not a valid MAC address" % string
@@ -35,41 +50,51 @@ def mac_valid(string):
 
 def arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--start",
-                        help="Start time - number of seconds before NOW",
-                        type=int
+    start_spec = parser.add_mutually_exclusive_group()
+    start_spec.add_argument("-b", "--before",
+                        help="Beginning of time window - relative time",
+                        type=duration_valid
                         )
-    parser.add_argument("-e", "--end",
-                        help="Start time - number of seconds before NOW",
-                        type=int
+    start_spec.add_argument("-s", "--start",
+                        help="Beginning of time window - absolute time",
+                        type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d%H:%i:%s')
+                        )
+    parser.add_argument("-l", "--length",
+                        help="Length of time window",
+                        type=duration_valid
                         )
     parser.add_argument("-m", "--mac",
-                        help="Show just records for specified MAC address (multiple such options could be specified)",
+                        help="Show just records for specified MAC address (multiple such options can be specified)",
                         action='append',
                         type=mac_valid
                         )
     parser.add_argument("-H", "--hostname",
-                        help="Show just records for specified hostname (multiple such options could be specified)",
+                        help="Show just records for specified hostname (multiple such options can be specified)",
                         action='append'
                         )
     parser.add_argument("--no-filter",
                         action='store_true',
-                        help="Don't apply filter to output (hides tracking/advertisements/other rubbish) - enabled by default"
+                        help="Don't apply filter to output (hides tracking, advertisements and other rubbish)"
                         )
     parser.add_argument("-A", "--aggregate",
                         action='store_true',
                         help="Display aggregate records (instead of timeline)"
                         )
-
-    return parser.parse_args()
+    args=parser.parse_args()
+    if args.length and not (args.before or args.start):
+        parser.error("--length required either --before of --start to be specified")
+        sys.exit(1)
+    return args
 
 
 args=arg_parser()
 query={}
+if args.before:
+    query["start"]=time.time() - args.before
 if args.start:
     query["start"]=args.start
-if args.end:
-    query["end"]=args.end
+if args.length:
+    query["end"]=query["start"] + args.length
 if args.mac:
     query["mac"]=args.mac
 if args.hostname:
@@ -90,6 +115,7 @@ except:
 finally:
     sock.close()
 
+#print(response)
 data=json.loads(response)
 for i in range(len(data)):
     if data[i][1]==0:

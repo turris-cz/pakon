@@ -16,11 +16,11 @@ import socketserver
 def build_filter(query):
     now = time.time()
     if "start" in query:
-        time_from = now - int(query["start"])
+        time_from = int(query["start"])
     else:
         time_from = 0
     if "end" in query:
-        time_to = now - int(query["end"])
+        time_to = int(query["end"])
     else:
         time_to=now
     where_clause="(start BETWEEN ? AND ? OR (start+duration) BETWEEN ? AND ?)"
@@ -69,7 +69,7 @@ def query(query):
         result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,app_hostname,dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
-        ORDER BY app_hostname,app_proto,start""", where_parameters + where_parameters)
+        ORDER BY src_mac,app_hostname,app_proto,start""", where_parameters + where_parameters)
         last = [i for i in c.fetchone()]
         for row in result:
             if filter and row[3] in ignored:
@@ -89,7 +89,7 @@ def query(query):
                 row[1]-=int(not_contained)
                 row[6]=int(part*row[6])
                 row[7]=int(part*row[7])
-            if last[3]==row[3]:
+            if last[2]==row[2] and last[3]==row[3]:
                 if row[0] > last2[1]:
                     last[1]+=int(last2[1]-last2[0])
                     last2=[row[0],row[0]+row[1]]
@@ -142,7 +142,10 @@ def query(query):
         if d[4] in proto_ports:
             d[4]=proto_ports[d[4]]
     con.close()
-    return json.dumps(domains)
+    if domains:
+        return json.dumps(domains)
+    else:
+        return '[]'
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):

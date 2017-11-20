@@ -51,6 +51,16 @@ def load_ignores():
 
 ignored=load_ignores()
 
+def is_ignored(hostname):
+    if hostname in ignored:
+        return True
+    parts=hostname.split('.')
+    while parts:
+        if ".".join(parts) in ignored:
+            return True
+        parts=parts[1:]
+    return False
+
 def query(query):
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
@@ -66,13 +76,13 @@ def query(query):
     domains = []
     if aggregate:
         last2 = [0,0]
-        result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
+        result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
-        select start,duration,src_mac,app_hostname,dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
+        select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY src_mac,app_hostname,app_proto,start""", where_parameters + where_parameters)
         last = [i for i in c.fetchone()]
         for row in result:
-            if filter and row[3] in ignored:
+            if filter and is_ignored(row[3]):
                 continue
             row=[i for i in row]
             if not row[3]:
@@ -89,7 +99,7 @@ def query(query):
                 row[1]-=int(not_contained)
                 row[6]=int(part*row[6])
                 row[7]=int(part*row[7])
-            if last[2]==row[2] and last[3]==row[3]:
+            if last[2]==row[2] and last[3]==row[3] and last[4]==row[4]:
                 if row[0] > last2[1]:
                     last[1]+=int(last2[1]-last2[0])
                     last2=[row[0],row[0]+row[1]]
@@ -114,7 +124,7 @@ def query(query):
         for row in result:
             if not row[3]:
                 continue
-            if filter and row[3] in ignored:
+            if filter and is_ignored(row[3]):
                 continue
             row=[i for i in row]
             if not row[3]:

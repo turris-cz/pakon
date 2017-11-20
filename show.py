@@ -127,4 +127,9 @@ for i in range(len(data)):
     data[i][6]=size_fmt(data[i][6])
     data[i][7]=size_fmt(data[i][7])
     data[i]=[str(c) for c in data[i]]
+data.insert(0,["datetime", "dur.", "src MAC", "hostname", "dst port", "proto", "send", "recvd"])
+data.insert(1,["", "", "", "", "", "", "", ""])
+if args.aggregate:
+    for i in range(len(data)):
+        data[i]=data[i][1:]
 print_table(data)

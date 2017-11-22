@@ -80,7 +80,9 @@ def query(query):
         UNION ALL
         select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY src_mac,app_hostname,app_proto,start""", where_parameters + where_parameters)
-        last = [i for i in c.fetchone()]
+        last=c.fetchone()
+        if last:
+            last = [i for i in last]
         for row in result:
             if filter and is_ignored(row[3]):
                 continue
@@ -113,14 +115,17 @@ def query(query):
                 domains.append(last)
                 last=[i for i in row]
                 last2 = [0,0]
-        domains.append(last)
+        if last:
+            domains.append(last)
         domains = sorted(domains, key=lambda x: x[6]+x[7])
     else:
         result = c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY app_hostname,app_proto,start""", where_parameters + where_parameters)
-        last = [i for i in c.fetchone()]
+        last=c.fetchone()
+        if last:
+            last = [i for i in last]
         for row in result:
             if not row[3]:
                 continue
@@ -141,7 +146,8 @@ def query(query):
             else:
                 domains.append(last)
             last=[i for i in row]
-        domains.append(last)
+        if last:
+            domains.append(last)
         domains = sorted(domains, key=lambda x: x[0])
     proto_ports = {'22/tcp': 'ssh', '80/tcp': 'http', '443/tcp': 'https', '53/tcp': 'dns', '53/udp': 'dns', '143/tcp': 'imap', '993/tcp': 'imaps', '587/tcp': 'smtp', '995/tcp': 'pop3s', '25/tcp': 'smtp', '465/tcp': 'smtps', '110/tcp': 'pop3'}
     #This is ugly hack for missing velues (due to aggregation). This should disappear in the future.
@@ -152,10 +158,7 @@ def query(query):
         if d[4] in proto_ports:
             d[4]=proto_ports[d[4]]
     con.close()
-    if domains:
-        return json.dumps(domains)
-    else:
-        return '[]'
+    return json.dumps(domains)
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):

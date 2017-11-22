@@ -76,7 +76,7 @@ def query(query):
     domains = []
     if aggregate:
         last2 = [0,0]
-        result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
+        result=c.execute("""select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY src_mac,app_hostname,app_proto,start""", where_parameters + where_parameters)
@@ -84,11 +84,11 @@ def query(query):
         if last:
             last = [i for i in last]
         for row in result:
-            if filter and is_ignored(row[3]):
-                continue
             row=[i for i in row]
             if not row[3]:
                 row[3]=''
+            if filter and is_ignored(row[3]):
+                continue
             if row[0]<time_from:
                 not_contained=time_from-row[0]
                 part=1.0*(row[1]-not_contained)/row[1]

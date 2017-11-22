@@ -17,9 +17,22 @@ import logging
 import glob
 import collections
 import queue
+from functools import lru_cache
 
-#logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
+def uci_get(opt):
+    delimiter = '__uci__delimiter__'
+    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = chld.communicate()
+    out = out.strip().decode('ascii','ignore')
+    if out.find(delimiter) != -1:
+        return out.split(delimiter)
+    else:
+        return out
+
 
 class LRUCache:
     def __init__(self, capacity):
@@ -104,6 +117,19 @@ def timestamp2unixtime(timestamp):
     timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond)/1000000
     return timestamp
 
+@lru_cache(maxsize=32)
+def get_mac_iface(mac):
+    try:
+        interface = subprocess.check_output(['/usr/libexec/get_mac_iface.sh', mac])
+        if interface:
+            return interface.decode().rstrip() #remove trailing newline
+        else:
+            return ""
+    except OSError:
+        logger.warn("failed to get interface (using get_mac_iface.sh)")
+    return "*"
+
+
 def handle_dns(data, c):
     global dns_cache
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
@@ -133,7 +159,7 @@ def handle_tls(data, c):
         #get only CN from suject
         m = re.search('(?<=CN=)[^,]*', data['tls']['subject'])
         if m:
-                hostname = m.group(0)
+            hostname = m.group(0)
     if not hostname:
         return
     c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "tls" WHERE flow_id = ?', (domain_replace.replace(hostname), data['flow_id']))
@@ -149,12 +175,18 @@ def handle_http(data, c):
         logging.debug("Can't update flow")
 
 def handle_flow_start(data, c):
-    global domain_replace
+    global domain_replace, allowed_interfaces
     if data['proto'] not in ['TCP', 'UDP']:
         return
     if 'app_proto' not in data.keys():
         data['app_proto'] = '?'
     if data['app_proto'] in ['failed', 'dns']:
+        return
+    iface = get_mac_iface(data['ether']['src'])
+    logging.debug(iface)
+    logging.debug(allowed_interfaces)
+    if allowed_interfaces and iface not in allowed_interfaces:
+        logging.debug("Flow from not allowed_interfaces")
         return
     hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
     if hostname:
@@ -196,6 +228,7 @@ except:
 
 dns_cache = DNSCache()
 domain_replace = MultiReplace(load_replaces())
+allowed_interfaces = []
 conntrack=None
 try:
     devnull = open(os.devnull, 'w')
@@ -204,22 +237,15 @@ except Exception as e:
     logging.error("Can't run flows_conntrack.py")
     logging.error(e)
     sys.exit(1)
-if not os.path.isfile('/var/lib/pakon.db'):
-    subprocess.call(['/usr/bin/python2', '/usr/libexec/pakon-light/create_db.py'])
-con = sqlite3.connect('/var/lib/pakon.db')
-c = con.cursor()
-try:
-    c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
-    con.commit()
-except:
-    logging.debug('Error cleaning flow_id')
 
 signal.signal(signal.SIGINT, exit_gracefully)
 signal.signal(signal.SIGTERM, exit_gracefully)
 signal.signal(signal.SIGUSR1, reload_replaces)
 
 def main():
-    # flow_ids are only unique (and meaningful) during one run of this script
+    global allowed_interfaces
+    allowed_interfaces = uci_get('suricata.suricata.interface')
+    print(allowed_interfaces)
     logging.debug("Listening...")
     while True:
         try:

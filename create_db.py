@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import os
 import sqlite3
 
+os.makedirs("/var/lib", exist_ok=True)
 con = sqlite3.connect('/var/lib/pakon.db')
 c = con.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS traffic (flow_id integer, start real, duration integer, src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, proto text, app_proto text, bytes_send integer, bytes_received integer, app_hostname text)')
@@ -13,6 +15,7 @@ c.execute('PRAGMA user_version=1')
 con.commit()
 con.close()
 
+os.makedirs("/srv/pakon", exist_ok=True)
 con = sqlite3.connect('/srv/pakon/pakon-archive.db')
 c = con.cursor()
 c.execute('CREATE TABLE IF NOT EXISTS traffic (start real, duration integer, details integer, src_mac text, src_ip text, src_port integer, dest_ip text, dest_port integer, proto text, app_proto text, bytes_send integer, bytes_received integer, app_hostname text)')

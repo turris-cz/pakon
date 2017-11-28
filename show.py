@@ -122,7 +122,8 @@ sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
     sock.connect("/var/run/pakon-query.sock")
     sock.sendall((query+"\n").encode())
-    response = sock.makefile().readline().strip()
+    with sock.makefile() as f:
+        response = f.readline().strip()
 except:
     print("Can't get data from pakon-handler. Is it running?")
     sys.exit(1)

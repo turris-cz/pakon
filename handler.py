@@ -163,7 +163,8 @@ def query(query):
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        data = self.request.makefile().readline().strip()
+        with self.request.makefile() as f:
+            data = f.readline().strip()
         self.request.sendall((query(data)+"\n").encode())
 
 def main():

@@ -52,6 +52,8 @@ def load_ignores():
 ignored=load_ignores()
 
 def is_ignored(hostname):
+    if not hostname:
+        return False
     if hostname in ignored:
         return True
     parts=hostname.split('.')
@@ -79,14 +81,12 @@ def query(query):
         result=c.execute("""select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
-        ORDER BY src_mac,app_hostname,app_proto,start""", where_parameters + where_parameters)
+        ORDER BY src_mac,app_hostname,dest_port,start""", where_parameters + where_parameters)
         last=c.fetchone()
         if last:
             last = [i for i in last]
         for row in result:
             row=[i for i in row]
-            if not row[3]:
-                row[3]=''
             if filter and is_ignored(row[3]):
                 continue
             if row[0]<time_from:
@@ -107,15 +107,15 @@ def query(query):
                     last2=[row[0],row[0]+row[1]]
                 else:
                     last2[1]=max(last2[1],row[0]+row[1])
-                last[4]=(last[4] if row[4]==last[4] else "")
                 last[5]=(row[5] if row[5]==last[5] or last[5]=='?' else "?")
                 last[6]+=int(row[6])
                 last[7]+=int(row[7])
             else:
-                domains.append(last)
-                last=[i for i in row]
+                if last[6]+last[7]>0:
+                    domains.append(last)
+                last=row
                 last2 = [0,0]
-        if last:
+        if last and last[6]+last[7]>0:
             domains.append(last)
         domains = sorted(domains, key=lambda x: x[6]+x[7])
     else:

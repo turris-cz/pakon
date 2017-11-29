@@ -17,6 +17,7 @@ import logging
 __ARCHIVE_DB_PATH__ = "/srv/pakon/pakon-archive.db"
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 delimiter = '__uci__delimiter__'
 
@@ -44,7 +45,7 @@ def squash(from_details, to_details, start, window):
         if row['rowid'] in to_be_deleted:
             continue
         logging.debug("trying:")
-        logging.debug(row)
+        logging.debug(tuple(row))
         current_start = float(row['start'])
         current_end = float(row['end'])
         current_bytes_send = int(row['bytes_send'])
@@ -55,9 +56,14 @@ def squash(from_details, to_details, start, window):
         app_proto = row['app_proto']
         app_hostname = row['app_hostname']
         tmp = con.cursor()
-        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? AND app_hostname = ? AND dest_port = ? AND proto = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'], row['app_hostname'], row['dest_port'], row['proto'])):
+        first = True
+        for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? AND dest_port = ? AND proto = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'], row['dest_port'], row['proto'])):
+            #hostname comparison done here (not in SQL query) because of None values
+            #we want to merge records with unknown hostname together (in python None==None)
+            if entry['app_hostname']!=row['app_hostname']:
+                continue
             logging.debug("joining with:")
-            logging.debug(entry)
+            logging.debug(tuple(entry))
             current_end = max(current_end, float(entry['end']))
             current_bytes_send += int(entry['bytes_send'])
             current_bytes_received += int(entry['bytes_received'])

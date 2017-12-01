@@ -17,7 +17,6 @@ import logging
 import glob
 import collections
 import queue
-from functools import lru_cache
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -119,19 +118,6 @@ def timestamp2unixtime(timestamp):
     timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond)/1000000
     return timestamp
 
-@lru_cache(maxsize=32)
-def get_mac_iface(mac):
-    try:
-        interface = subprocess.check_output(['/usr/libexec/get_mac_iface.sh', mac])
-        if interface:
-            return interface.decode().rstrip() #remove trailing newline
-        else:
-            return ""
-    except OSError:
-        logger.warn("failed to get interface (using get_mac_iface.sh)")
-    return "*"
-
-
 def handle_dns(data, c):
     global dns_cache
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
@@ -184,11 +170,10 @@ def handle_flow_start(data, c):
         data['app_proto'] = '?'
     if data['app_proto'] in ['failed', 'dns']:
         return
-    iface = get_mac_iface(data['ether']['src'])
-    logging.debug(iface)
-    logging.debug(allowed_interfaces)
-    if allowed_interfaces and iface not in allowed_interfaces:
-        logging.debug("Flow from not allowed_interfaces")
+    if "src_iface" not in data.keys():
+        data["src_iface"] = ""
+    if allowed_interfaces and data["src_iface"] not in allowed_interfaces:
+        logging.debug("Flow is not from allowed interface")
         return
     hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
     if hostname:

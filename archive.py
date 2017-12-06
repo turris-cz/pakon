@@ -25,11 +25,31 @@ def uci_get(opt):
     chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = chld.communicate()
-    out = string.strip(out).encode('ascii','ignore')
+    out = str(out.strip(), 'ascii')
     if out.find(delimiter) != -1:
         return out.split(delimiter)
     else:
         return out
+
+def uci_get_time(opt, default):
+    ret = 0
+    text = uci_get(opt)
+    if not text:
+        text = default
+    if text[-1:] == 'M':
+        ret = int(text[:-1]) * 60
+    elif text[-1:] == 'H':
+        ret = int(text[:-1]) * 3600
+    elif text[-1:] == 'd':
+        ret = int(text[:-1]) * 24 * 3600
+    # constants for month and year stolen from DuckDuckGo
+    elif text[-1:] == 'm':
+        ret = int(text[:-1]) * 2629800
+    elif text[-1:] == 'y':
+        ret = int(text[:-1]) * 31557600
+    else:
+        ret = int(text)
+    return ret
 
 if not os.path.isfile(__ARCHIVE_DB_PATH__):
 	subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
@@ -102,7 +122,7 @@ logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*
 logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900)))
 logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,1800)))
 logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600)))
-c.execute('DELETE FROM traffic WHERE start < ?', (3600*24*28,))
+c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '1m'),))
 c.execute('VACUUM')
 con.commit()
 

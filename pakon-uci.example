@@ -1,2 +1,5 @@
+config monitor 'monitor'
+	option notify_new_devices 1
+
 config archive 'archive'
 	option keep 4w

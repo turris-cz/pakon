@@ -1,2 +1,2 @@
 config archive 'archive'
-	option keep 1m
+	option keep 4w

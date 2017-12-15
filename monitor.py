@@ -82,7 +82,6 @@ class MultiReplace:
         return self.rx.sub(one_xlat, text)
 
 def get_dns_hostname(src_ip, dest_ip):
-    global dns_cache
     name = None
     while True:
         name_ = dns_cache.get(src_ip, name or dest_ip)
@@ -119,7 +118,6 @@ def timestamp2unixtime(timestamp):
     return timestamp
 
 def handle_dns(data, c):
-    global dns_cache
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
         logging.debug('Saving DNS data')
         dns_cache.set(data['dest_ip'],data['dns']['rrname'],data['dns']['rdata'])
@@ -139,7 +137,6 @@ def handle_flow(data, c):
             logging.debug("Can't update flow")
 
 def handle_tls(data, c):
-    global domain_replace
     hostname = ''
     if 'sni' in data['tls'].keys():
         hostname = data['tls']['sni']
@@ -155,7 +152,6 @@ def handle_tls(data, c):
         logging.debug("Can't update flow")
 
 def handle_http(data, c):
-    global domain_replace
     if 'hostname' not in data['http'].keys():
         return
     c.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?', (domain_replace.replace(data['http']['hostname']), data['flow_id']))
@@ -163,7 +159,6 @@ def handle_http(data, c):
         logging.debug("Can't update flow")
 
 def handle_flow_start(data, c):
-    global domain_replace, allowed_interfaces
     if data['proto'] not in ['TCP', 'UDP']:
         return
     if 'app_proto' not in data.keys():
@@ -185,7 +180,6 @@ def handle_flow_start(data, c):
                 data['proto'], data['app_proto'], hostname))
 
 def exit_gracefully(signum, frame):
-    global con, conntrack
     conntrack.terminate()
     time.sleep(1)
     if not con:
@@ -197,7 +191,6 @@ def exit_gracefully(signum, frame):
     sys.exit(0)
 
 def reload_replaces(signum, frame):
-    global domain_replace
     logging.info("reloading domain replaces")
     domain_replace.setup(load_replaces())
 

@@ -170,42 +170,39 @@ def exit_gracefully(signum, frame):
     conntrack.kill()
     sys.exit(0)
 
+dns_cache = DNSCache()
+domain_replace = MultiReplace(load_replaces())
+allowed_interfaces = []
+conntrack = None
+con = None
+
 def reload_replaces(signum, frame):
     logging.info("reloading domain replaces")
     domain_replace.setup(load_replaces())
 
-if not os.path.isfile('/var/lib/pakon.db'):
-    subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
-con = sqlite3.connect('/var/lib/pakon.db')
-
-c = con.cursor()
-# flow_ids are only unique (and meaningful) during one run of this script
-try:
-    c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
-    con.commit()
-except:
-    logging.debug('Error cleaning flow_id')
-
-dns_cache = DNSCache()
-domain_replace = MultiReplace(load_replaces())
-allowed_interfaces = []
-conntrack=None
-try:
-    devnull = open(os.devnull, 'w')
-    conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
-except Exception as e:
-    logging.error("Can't run flows_conntrack.py")
-    logging.error(e)
-    sys.exit(1)
-
-signal.signal(signal.SIGINT, exit_gracefully)
-signal.signal(signal.SIGTERM, exit_gracefully)
-signal.signal(signal.SIGUSR1, reload_replaces)
-
 def main():
-    global allowed_interfaces
+    global allowed_interfaces, conntrack
+    if not os.path.isfile('/var/lib/pakon.db'):
+        subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
+    con = sqlite3.connect('/var/lib/pakon.db')
+    c = con.cursor()
+    # flow_ids are only unique (and meaningful) during one run of this script
+    try:
+        c.execute('UPDATE traffic SET flow_id = NULL, duration = 0, bytes_send = 0, bytes_received = 0 WHERE flow_id IS NOT NULL')
+        con.commit()
+    except:
+        logging.debug('Error cleaning flow_id')
+    try:
+        devnull = open(os.devnull, 'w')
+        conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
+    except Exception as e:
+        logging.error("Can't run flows_conntrack.py")
+        logging.error(e)
+        sys.exit(1)
+    signal.signal(signal.SIGINT, exit_gracefully)
+    signal.signal(signal.SIGTERM, exit_gracefully)
+    signal.signal(signal.SIGUSR1, reload_replaces)
     allowed_interfaces = uci_get('suricata.suricata.interface')
-    print(allowed_interfaces)
     logging.debug("Listening...")
     while True:
         try:

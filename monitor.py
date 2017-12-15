@@ -19,8 +19,8 @@ import collections
 import queue
 from cachetools import TTLCache
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 def uci_get(opt):
     delimiter = '__uci__delimiter__'

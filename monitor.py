@@ -17,6 +17,7 @@ import logging
 import glob
 import collections
 import queue
+from cachetools import TTLCache
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -32,34 +33,12 @@ def uci_get(opt):
     else:
         return out
 
-
-class LRUCache:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.cache = collections.OrderedDict()
-
-    def get(self, key):
-        try:
-            value = self.cache.pop(key)
-            self.cache[key] = value
-            return value
-        except KeyError:
-            return None
-
-    def set(self, key, value):
-        try:
-            self.cache.pop(key)
-        except KeyError:
-            if len(self.cache) >= self.capacity:
-                self.cache.popitem(last=False)
-        self.cache[key] = value
-
 class DNSCache:
     def __init__(self):
-        self.cache = LRUCache(1000)
+        self.cache = TTLCache(maxsize=5000, ttl=3600)
 
     def set(self, src_ip, question, answer):
-        self.cache.set(src_ip+":"+answer, question)
+        self.cache[src_ip+":"+answer] = question
 
     def get(self, src_ip, answer):
         return self.cache.get(src_ip+":"+answer)
@@ -172,6 +151,7 @@ def handle_flow_start(data, c):
         return
     hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
     if hostname:
+        logging.debug('Got hostname from cached DNS: {}'.format(hostname))
         hostname = domain_replace.replace(hostname)
     c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, app_hostname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (data['flow_id'], timestamp2unixtime(data['flow']['start']),

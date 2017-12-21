@@ -17,6 +17,7 @@ import logging
 import glob
 import collections
 import queue
+import threading
 from cachetools import TTLCache
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -96,6 +97,19 @@ def timestamp2unixtime(timestamp):
     timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond)/1000000
     return timestamp
 
+
+def new_device_notify(mac, iface):
+    def new_device_notify_thread(mac, iface):
+        time.sleep(5)
+        try:
+            cmd = ["/usr/libexec/pakon-light/notify_new_device.sh", mac, iface]
+            subprocess.call([arg.encode('utf-8') for arg in cmd])
+        except OSError:
+            logger.error("failed to create notification")
+    thread = threading.Thread(target=new_device_notify_thread, args=(mac, iface, ))
+    thread.daemon = True
+    thread.start()
+
 def handle_dns(data, c):
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
         logging.debug('Saving DNS data')
@@ -137,7 +151,7 @@ def handle_http(data, c):
     if c.rowcount!=1:
         logging.debug("Can't update flow")
 
-def handle_flow_start(data, c):
+def handle_flow_start(data, notify_new_devices, c):
     if data['proto'] not in ['TCP', 'UDP']:
         return
     if 'app_proto' not in data.keys():
@@ -149,6 +163,9 @@ def handle_flow_start(data, c):
     if allowed_interfaces and data["src_iface"] not in allowed_interfaces:
         logging.debug("Flow is not from allowed interface")
         return
+    if notify_new_devices and data['ether']['src'] not in known_devices:
+        known_devices.add(data['ether']['src'])
+        new_device_notify(data['ether']['src'], data["src_iface"])
     hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
@@ -173,6 +190,7 @@ def exit_gracefully(signum, frame):
 dns_cache = DNSCache()
 domain_replace = MultiReplace(load_replaces())
 allowed_interfaces = []
+known_devices=set()
 conntrack = None
 con = None
 
@@ -182,7 +200,7 @@ def reload_replaces(signum, frame):
 
 def main():
     global allowed_interfaces, conntrack
-    if not os.path.isfile('/var/lib/pakon.db'):
+    if not os.path.isfile('/var/lib/pakon.db') or not os.path.isfile('/srv/pakon/pakon-archive.db'):
         subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
@@ -192,6 +210,12 @@ def main():
         con.commit()
     except:
         logging.debug('Error cleaning flow_id')
+    notify_new_devices=uci_get('pakon.monitor.notify_new_devices')
+    if notify_new_devices:
+        c.execute('ATTACH "/srv/pakon/pakon-archive.db" AS archive')
+        for row in c.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):
+            known_devices.add(row[0])
+        c.execute('DETACH archive')
     try:
         devnull = open(os.devnull, 'w')
         conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
@@ -230,7 +254,7 @@ def main():
             elif data['event_type'] == 'http' and data['http']:
                 handle_http(data, c)
             elif data['event_type'] == 'flow_start' and data['flow']:
-                handle_flow_start(data, c)
+                handle_flow_start(data, notify_new_devices, c)
             else:
                 logging.warn("Unknown event type")
             con.commit()

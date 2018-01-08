@@ -218,7 +218,7 @@ def main():
         c.execute('DETACH archive')
     try:
         devnull = open(os.devnull, 'w')
-        conntrack = subprocess.Popen(["/usr/bin/python3","/usr/bin/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
+        conntrack = subprocess.Popen(["/usr/bin/python3","/usr/libexec/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
     except Exception as e:
         logging.error("Can't run flows_conntrack.py")
         logging.error(e)

@@ -29,7 +29,7 @@ def uci_get(opt):
     else:
         return out
 
-def uci_get_time(opt, default):
+def uci_get_time(opt, default = None):
     ret = 0
     text = uci_get(opt)
     if not text:
@@ -97,38 +97,44 @@ def squash(from_details, to_details, start, window):
         c.execute('DELETE FROM traffic WHERE rowid = ?', (tbd,))
     return len(to_be_deleted)
 
+def load_archive_rules():
+    rules = []
+    i = 0
+    while uci_get("pakon.@archive_rule[{}].up_to".format(i)):
+        up_to = uci_get_time("pakon.@archive_rule[{}].up_to".format(i))
+        window = uci_get_time("pakon.@archive_rule[{}].window".format(i))
+        rules.append( { "up_to": up_to, "window": window })
+        i = i + 1
+    sorted(rules, key=lambda r: r["up_to"])
+    return rules
+
 # Create database if it was empty
 c = con.cursor()
-
-# Main loop
-
 now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 start = now-3600*24 #move flows from live DB to archive after 24hours
 
 c.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
-c.execute('INSERT INTO traffic SELECT start, duration, 99, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
+c.execute('INSERT INTO traffic SELECT start, duration, 0, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
 logging.info("moved {} flows from live to archive".format(c.rowcount))
 c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
 c.execute('VACUUM live')
 con.commit()
-#TODO: move constants to configuration
-logging.info("squashed from 99 to 80 - deleted {}".format(squash(99,80,now-3600*24,60)))
-logging.info("squashed from 80 to 70 - deleted {}".format(squash(80,70,now-3600*24*3,900)))
-logging.info("squashed from 70 to 60 - deleted {}".format(squash(70,60,now-3600*24*7,1800)))
-logging.info("squashed from 60 to 50 - deleted {}".format(squash(60,50,now-3600*24*14,3600)))
+rules = load_archive_rules()
+
+#if the rules changed (there is detail level that can't be generated using current rules)
+#reset everything to detail level 0 -> perform the whole archivation again
+c.execute('SELECT DISTINCT(details) FROM traffic WHERE details > ?', (len(rules),))
+if c.fetchall():
+    logging.info('resetting all detail levels to 0')
+    c.execute('UPDATE traffic SET details = 0')
+
+for i in range(len(rules)):
+    logging.info("squashed from {} to {} - deleted {}".format(i, i+1, squash(i, i+1, now - rules[i]["up_to"],rules[i]["window"])))
 c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
 c.execute('VACUUM')
 con.commit()
-
 c.execute('SELECT COUNT(*) FROM live.traffic')
 logging.info("{} flows in live database".format(c.fetchone()[0]))
-c.execute('SELECT COUNT(*) FROM traffic WHERE details = 99')
-logging.info("{} flows in archive on details level 99".format(c.fetchone()[0]))
-c.execute('SELECT COUNT(*) FROM traffic WHERE details = 80')
-logging.info("{} flows in archive on details level 80".format(c.fetchone()[0]))
-c.execute('SELECT COUNT(*) FROM traffic WHERE details = 70')
-logging.info("{} flows in archive on details level 70".format(c.fetchone()[0]))
-c.execute('SELECT COUNT(*) FROM traffic WHERE details = 60')
-logging.info("{} flows in archive on details level 60".format(c.fetchone()[0]))
-c.execute('SELECT COUNT(*) FROM traffic WHERE details = 50')
-logging.info("{} flows in archive on details level 50".format(c.fetchone()[0]))
+for i in range(len(rules)+1):
+    c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
+    logging.info("{} flows in archive on details level {}".format(c.fetchone()[0], i))

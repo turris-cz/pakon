@@ -75,10 +75,12 @@ def squash(from_details, to_details, up_to, window, size_threshold):
         first = True
         for entry in tmp.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start > ? AND start <= ? AND src_mac = ? AND dest_port = ? AND proto = ? ORDER BY start', (from_details, current_start, current_start+window, row['src_mac'], row['dest_port'], row['proto'])):
             #hostname comparison done here (not in SQL query) because of None values
-            #we want to merge records with unknown hostname together (in python None==None)
             if entry['app_hostname']!=row['app_hostname']:
                 continue
-            logging.debug("joining with:")
+            #if hostname is Null, we only want to merge flows with equal dest_ip
+            if not entry['app_hostname'] and entry['dest_ip']!=row['dest_ip']:
+                continue
+            logging.debug("merging with:")
             logging.debug(tuple(entry))
             current_end = max(current_end, float(entry['end']))
             current_bytes_send += int(entry['bytes_send'])

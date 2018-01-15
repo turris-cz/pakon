@@ -50,8 +50,10 @@ archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive
 con = sqlite3.connect(archive_path)
 con.row_factory = sqlite3.Row
 
-def squash(from_details, to_details, start, window):
+def squash(from_details, to_details, up_to, window, size_threshold):
     global con
+    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    start = now - up_to
     c = con.cursor()
     logging.debug("Squashing flows - from detail_level {} to detail_level {}".format(from_details, to_details))
     to_be_deleted = []
@@ -92,7 +94,10 @@ def squash(from_details, to_details, start, window):
             if app_hostname != entry['app_hostname']:
                 app_hostname = ''
             to_be_deleted.append(entry['rowid'])
-        tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, app_proto, current_bytes_send, current_bytes_received, app_hostname, row['rowid']))
+        if current_bytes_send + current_bytes_received > size_threshold:
+            tmp.execute('UPDATE traffic SET details = ?, duration = ?, src_ip = ?, src_port = ?, dest_ip = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, app_hostname = ? WHERE rowid = ?', (to_details, int(current_end-current_start), src_ip, src_port, dest_ip, app_proto, current_bytes_send, current_bytes_received, app_hostname, row['rowid']))
+        else:
+            to_be_deleted.append(row['rowid'])
     for tbd in to_be_deleted:
         c.execute('DELETE FROM traffic WHERE rowid = ?', (tbd,))
     return len(to_be_deleted)
@@ -103,7 +108,8 @@ def load_archive_rules():
     while uci_get("pakon.@archive_rule[{}].up_to".format(i)):
         up_to = uci_get_time("pakon.@archive_rule[{}].up_to".format(i))
         window = uci_get_time("pakon.@archive_rule[{}].window".format(i))
-        rules.append( { "up_to": up_to, "window": window })
+        size_threshold = int(uci_get("pakon.@archive_rule[{}].size_threshold".format(i)) or 0)
+        rules.append( { "up_to": up_to, "window": window, "size_threshold": size_threshold })
         i = i + 1
     sorted(rules, key=lambda r: r["up_to"])
     return rules
@@ -129,7 +135,8 @@ if c.fetchall():
     c.execute('UPDATE traffic SET details = 0')
 
 for i in range(len(rules)):
-    logging.info("squashed from {} to {} - deleted {}".format(i, i+1, squash(i, i+1, now - rules[i]["up_to"],rules[i]["window"])))
+    deleted = squash(i, i+1, rules[i]["up_to"], rules[i]["window"], rules[i]["size_threshold"])
+    logging.info("squashed from {} to {} - deleted {}".format(i, i+1, deleted))
 c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
 
 #c.execute('VACUUM')

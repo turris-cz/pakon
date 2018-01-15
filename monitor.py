@@ -258,13 +258,13 @@ def main():
             else:
                 logging.warn("Unknown event type")
             con.commit()
-
         except KeyboardInterrupt:
             exit_gracefully()
-
         except IOError as e:
             if e.errno != errno.EINTR:
                 raise
+        except sqlite3.DatabaseError as e:
+            logging.warn("Database error: "+str(e))
 
 if __name__ == "__main__":
     main()

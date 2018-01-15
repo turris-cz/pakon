@@ -11,7 +11,20 @@ import errno
 import re
 import json
 import glob
+import subprocess
 import socketserver
+
+#TODO: replace with uci bindings - once available
+def uci_get(opt):
+    delimiter = '__uci__delimiter__'
+    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, err = chld.communicate()
+    out = out.strip().decode('ascii','ignore')
+    if out.find(delimiter) != -1:
+        return out.split(delimiter)
+    else:
+        return out
 
 def build_filter(query):
     now = time.time()
@@ -64,9 +77,10 @@ def is_ignored(hostname):
     return False
 
 def query(query):
+    archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
-    c.execute('ATTACH DATABASE "/srv/pakon/pakon-archive.db" AS archive')
+    c.execute('ATTACH DATABASE ? AS archive', (archive_path,))
     try:
         query = json.loads(query)
     except ValueError:

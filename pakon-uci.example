@@ -1,4 +1,4 @@
-config monitor 'monitor'
+config common 'common'
 	option notify_new_devices 1
 
 config archive 'archive'

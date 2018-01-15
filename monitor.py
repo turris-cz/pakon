@@ -24,6 +24,7 @@ from cachetools import LRUCache, TTLCache
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
+#TODO: replace with uci bindings - once available
 def uci_get(opt):
     delimiter = '__uci__delimiter__'
     chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
@@ -242,8 +243,7 @@ def reload_replaces(signum, frame):
 
 def main():
     global allowed_interfaces, conntrack
-    if not os.path.isfile('/var/lib/pakon.db') or not os.path.isfile('/srv/pakon/pakon-archive.db'):
-        subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
+    archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
     dns_cache.try_load()
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
@@ -253,9 +253,9 @@ def main():
         con.commit()
     except:
         logging.debug('Error cleaning flow_id')
-    notify_new_devices=uci_get('pakon.monitor.notify_new_devices')
+    notify_new_devices = uci_get('pakon.common.notify_new_devices')
     if notify_new_devices:
-        c.execute('ATTACH "/srv/pakon/pakon-archive.db" AS archive')
+        c.execute('ATTACH ? AS archive', (archive_path,))
         for row in c.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):
             known_devices.add(row[0])
         c.execute('DETACH archive')

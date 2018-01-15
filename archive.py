@@ -14,18 +14,16 @@ import signal
 import errno
 import logging
 
-__ARCHIVE_DB_PATH__ = "/srv/pakon/pakon-archive.db"
-
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-delimiter = '__uci__delimiter__'
-
+#TODO: replace with uci bindings - once available
 def uci_get(opt):
+    delimiter = '__uci__delimiter__'
     chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = chld.communicate()
-    out = str(out.strip(), 'ascii')
+    out = out.strip().decode('ascii','ignore')
     if out.find(delimiter) != -1:
         return out.split(delimiter)
     else:
@@ -48,9 +46,8 @@ def uci_get_time(opt, default):
         ret = int(text)
     return ret
 
-if not os.path.isfile(__ARCHIVE_DB_PATH__):
-	subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
-con = sqlite3.connect(__ARCHIVE_DB_PATH__)
+archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
+con = sqlite3.connect(archive_path)
 con.row_factory = sqlite3.Row
 
 def squash(from_details, to_details, start, window):

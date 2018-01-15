@@ -131,7 +131,11 @@ if c.fetchall():
 for i in range(len(rules)):
     logging.info("squashed from {} to {} - deleted {}".format(i, i+1, squash(i, i+1, now - rules[i]["up_to"],rules[i]["window"])))
 c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
-c.execute('VACUUM')
+
+#c.execute('VACUUM')
+#performing it every time is bad - it causes the whole database file to be rewritten
+#TODO: think about when to do it, perform it once in a while?
+
 con.commit()
 c.execute('SELECT COUNT(*) FROM live.traffic')
 logging.info("{} flows in live database".format(c.fetchone()[0]))

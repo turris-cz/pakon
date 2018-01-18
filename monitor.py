@@ -18,7 +18,7 @@ import glob
 import collections
 import queue
 import threading
-from cachetools import TTLCache
+from cachetools import LRUCache, TTLCache
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -35,14 +35,35 @@ def uci_get(opt):
         return out
 
 class DNSCache:
+    """DNS cache internally uses 2 types of cache.
+    One (fast_cache)is smaller, with short TTL and there can be a lot of garbage - NS servers A/AAAA, CNAMEs
+    The second one (used_cache) is LRU and there are just records that were used at least once - might be used again
+    """
     def __init__(self):
-        self.cache = TTLCache(maxsize=5000, ttl=3600)
+        self.fast_cache = TTLCache(maxsize=1000, ttl=3600)
+        self.used_cache = LRUCache(maxsize=2000)
 
     def set(self, src_mac, question, answer):
-        self.cache[src_mac+":"+answer] = question
+        """called by handle_dns, adds record to fast_cache"""
+        self.fast_cache[src_mac+":"+answer] = question
 
-    def get(self, src_mac, answer):
-        return self.cache.get(src_mac+":"+answer)
+    def get(self, src_mac, dest_ip):
+        """get name for IP address
+        Try used_cache first, if it's not there, try fast_cache
+        In fast_cache are also CNAMEs, so it might follow CNAMEs to get the user-requested name.
+        If record is found in fast_cache, it's added to used_cache then.
+        """
+        used = self.used_cache.get(src_mac+":"+dest_ip)
+        if used:
+            return used
+        name = None
+        while True:
+            name_ = self.fast_cache.get(src_mac+":"+(name or dest_ip))
+            if not name_:
+                if name:
+                    self.used_cache[src_mac+":"+dest_ip] = name
+                return name
+            name = name_
 
 class MultiReplace:
     "perform replacements specified by regex and adict all at once"
@@ -61,13 +82,6 @@ class MultiReplace:
             return self.adict[match.group(1)]
         return self.rx.sub(one_xlat, text)
 
-def get_dns_hostname(src_mac, dest_ip):
-    name = None
-    while True:
-        name_ = dns_cache.get(src_mac, name or dest_ip)
-        if not name_:
-            return name
-        name = name_
 
 
 def load_replaces():
@@ -166,7 +180,7 @@ def handle_flow_start(data, notify_new_devices, c):
     if notify_new_devices and data['ether']['src'] not in known_devices:
         known_devices.add(data['ether']['src'])
         new_device_notify(data['ether']['src'], data["src_iface"])
-    hostname = get_dns_hostname(data['ether']['src'], data['dest_ip'])
+    hostname = dns_cache.get(data['ether']['src'], data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
         hostname = domain_replace.replace(hostname)
@@ -179,11 +193,9 @@ def handle_flow_start(data, notify_new_devices, c):
 def exit_gracefully(signum, frame):
     conntrack.terminate()
     time.sleep(1)
-    if not con:
-        return
-    con.commit()
     if con:
-         con.close()
+        con.commit()
+        con.close()
     conntrack.kill()
     sys.exit(0)
 

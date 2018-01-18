@@ -38,11 +38,11 @@ class DNSCache:
     def __init__(self):
         self.cache = TTLCache(maxsize=5000, ttl=3600)
 
-    def set(self, src_ip, question, answer):
-        self.cache[src_ip+":"+answer] = question
+    def set(self, src_mac, question, answer):
+        self.cache[src_mac+":"+answer] = question
 
-    def get(self, src_ip, answer):
-        return self.cache.get(src_ip+":"+answer)
+    def get(self, src_mac, answer):
+        return self.cache.get(src_mac+":"+answer)
 
 class MultiReplace:
     "perform replacements specified by regex and adict all at once"
@@ -61,10 +61,10 @@ class MultiReplace:
             return self.adict[match.group(1)]
         return self.rx.sub(one_xlat, text)
 
-def get_dns_hostname(src_ip, dest_ip):
+def get_dns_hostname(src_mac, dest_ip):
     name = None
     while True:
-        name_ = dns_cache.get(src_ip, name or dest_ip)
+        name_ = dns_cache.get(src_mac, name or dest_ip)
         if not name_:
             return name
         name = name_
@@ -113,7 +113,7 @@ def new_device_notify(mac, iface):
 def handle_dns(data, c):
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
         logging.debug('Saving DNS data')
-        dns_cache.set(data['dest_ip'],data['dns']['rrname'],data['dns']['rdata'])
+        dns_cache.set(data['ether']['src'],data['dns']['rrname'],data['dns']['rdata'])
 
 def handle_flow(data, c):
     if data['proto'] not in ['TCP', 'UDP']:
@@ -166,7 +166,7 @@ def handle_flow_start(data, notify_new_devices, c):
     if notify_new_devices and data['ether']['src'] not in known_devices:
         known_devices.add(data['ether']['src'])
         new_device_notify(data['ether']['src'], data["src_iface"])
-    hostname = get_dns_hostname(data['src_ip'], data['dest_ip'])
+    hostname = get_dns_hostname(data['ether']['src'], data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
         hostname = domain_replace.replace(hostname)

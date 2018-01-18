@@ -18,6 +18,7 @@ import glob
 import collections
 import queue
 import threading
+import gzip
 from cachetools import LRUCache, TTLCache
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -39,9 +40,37 @@ class DNSCache:
     One (fast_cache)is smaller, with short TTL and there can be a lot of garbage - NS servers A/AAAA, CNAMEs
     The second one (used_cache) is LRU and there are just records that were used at least once - might be used again
     """
+    __DB_DUMP_PATH__ = "/srv/pakon/dns_cache.json.gz"
     def __init__(self):
         self.fast_cache = TTLCache(maxsize=1000, ttl=3600)
         self.used_cache = LRUCache(maxsize=2000)
+
+    def dump(self):
+        """dump used_cache to __DB_DUMP_PATH__ - so it can survive restart"""
+        cache = collections.OrderedDict()
+        for item in self.__popitem():
+            cache[item[0]] = item[1]
+        try:
+            with gzip.open(DNSCache.__DB_DUMP_PATH__, 'wb') as f:
+                f.write(json.dumps(cache).encode('utf-8'))
+        except IOError:
+            pass
+
+    def try_load(self):
+        """try restoring used_cache from __DB_DUMP_PATH__ - do nothing if it doesn't exist"""
+        if os.path.isfile(DNSCache.__DB_DUMP_PATH__):
+            try:
+                cache = {}
+                with gzip.open(DNSCache.__DB_DUMP_PATH__, 'rb') as f:
+                    cache = json.loads(f.read().decode('utf-8'), object_pairs_hook=collections.OrderedDict)
+                for k,v in cache.items():
+                    self.used_cache[k] = v
+            except (ValueError, IOError):
+                pass
+
+    def __popitem(self):
+        while self.used_cache:
+            yield self.used_cache.popitem()
 
     def set(self, src_mac, question, answer):
         """called by handle_dns, adds record to fast_cache"""
@@ -196,6 +225,7 @@ def exit_gracefully(signum, frame):
     if con:
         con.commit()
         con.close()
+    dns_cache.dump()
     conntrack.kill()
     sys.exit(0)
 
@@ -214,6 +244,7 @@ def main():
     global allowed_interfaces, conntrack
     if not os.path.isfile('/var/lib/pakon.db') or not os.path.isfile('/srv/pakon/pakon-archive.db'):
         subprocess.call(['/usr/bin/python3', '/usr/libexec/pakon-light/create_db.py'])
+    dns_cache.try_load()
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
     # flow_ids are only unique (and meaningful) during one run of this script

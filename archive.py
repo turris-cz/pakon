@@ -113,6 +113,9 @@ def load_archive_rules():
         size_threshold = int(uci_get("pakon.@archive_rule[{}].size_threshold".format(i)) or 0)
         rules.append( { "up_to": up_to, "window": window, "size_threshold": size_threshold })
         i = i + 1
+    if not rules: #if there is no rule (old configuration?) - add one default rule
+        rules.append( { "up_to": 86400, "window": 60, "size_threshold": 4096 })
+        logging.info('no rules in configuration - using default {}'.format(str(rules[0])))
     sorted(rules, key=lambda r: r["up_to"])
     return rules
 

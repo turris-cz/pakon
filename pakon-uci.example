@@ -1,5 +1,7 @@
-config common 'common'
+config monitor 'monitor'
 	option notify_new_devices 1
+	list interface 'br-lan'
+	list interface 'br-guest_turris'
 
 config archive 'archive'
 	option keep 4w

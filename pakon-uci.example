@@ -1,5 +1,5 @@
 config monitor 'monitor'
-	option notify_new_devices 1
+	option notify_new_devices 0
 	list interface 'br-lan'
 	list interface 'br-guest_turris'
 

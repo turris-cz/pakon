@@ -77,7 +77,7 @@ def is_ignored(hostname):
     return False
 
 def query(query):
-    archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
     c.execute('ATTACH DATABASE ? AS archive', (archive_path,))

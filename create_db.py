@@ -26,7 +26,7 @@ c.execute('PRAGMA user_version=1')
 con.commit()
 con.close()
 
-archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
+archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
 os.makedirs(os.path.dirname(os.path.abspath(archive_path)), exist_ok=True)
 con = sqlite3.connect(archive_path)
 c = con.cursor()

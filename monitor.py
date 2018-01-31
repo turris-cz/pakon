@@ -243,7 +243,7 @@ def reload_replaces(signum, frame):
 
 def main():
     global allowed_interfaces, conntrack
-    archive_path = uci_get('pakon.common.archive_path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     dns_cache.try_load()
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()

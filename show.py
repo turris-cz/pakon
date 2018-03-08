@@ -59,11 +59,11 @@ def timespec_valid(string):
             msg = "%r is not a valid datetime specification" % string
             raise argparse.ArgumentTypeError(msg)
 
-def mac_valid(string):
-    if not re.match("[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$", string.lower()):
-        msg = "%r is not a valid MAC address" % string
-        raise argparse.ArgumentTypeError(msg)
-    return string.lower()
+def mac_name_valid(string):
+    if re.match("[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$", string.lower()):
+        return string.lower()
+    else: #probably a name
+        return string
 
 
 def arg_parser():
@@ -79,10 +79,10 @@ def arg_parser():
                         type=timespec_valid
                         )
     parser.add_argument("-m", "--mac",
-                        help="Show just records for specified MAC address (multiple such options can be specified)",
+                        help="Show just records for specified MAC address OR name (multiple such options can be specified)",
                         action='append',
                         metavar='MAC',
-                        type=mac_valid
+                        type=mac_name_valid
                         )
     parser.add_argument("-H", "--hostname",
                         help="Show just records for specified (destination) hostname (multiple such options can be specified)",

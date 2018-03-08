@@ -26,7 +26,19 @@ def uci_get(opt):
     else:
         return out
 
-def build_filter(query):
+
+def load_names():
+    mac2name = {}
+    i = 0
+    while uci_get("dhcp.@host[{}].name".format(i)):
+        mac = uci_get("dhcp.@host[{}].mac".format(i))
+        name = uci_get("dhcp.@host[{}].name".format(i))
+        mac2name[mac]=name
+        i = i + 1
+    return mac2name
+
+
+def build_filter(query, name2mac):
     now = time.time()
     if "start" in query:
         time_from = int(query["start"])
@@ -39,6 +51,9 @@ def build_filter(query):
     where_clause="(start BETWEEN ? AND ? OR (start+duration) BETWEEN ? AND ?)"
     where_parameters=[time_from, time_to, time_from, time_to]
     if "mac" in query:
+        for i in range(len(query["mac"])):
+            if query["mac"][i] in name2mac:
+                query["mac"][i]=name2mac[query["mac"][i]]
         fill=['?' for m in query["mac"]]
         where_clause+=" AND src_mac IN ("+",".join(fill)+")"
         where_parameters+=query["mac"]
@@ -77,6 +92,7 @@ def is_ignored(hostname):
     return False
 
 def query(query):
+    mac2name = load_names()
     archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     con = sqlite3.connect('/var/lib/pakon.db')
     c = con.cursor()
@@ -86,7 +102,7 @@ def query(query):
     except ValueError:
         con.close()
         return '[]'
-    (time_from, time_to, where_clause, where_parameters) = build_filter(query)
+    (time_from, time_to, where_clause, where_parameters) = build_filter(query, {v:k for k,v in mac2name.items()})
     aggregate = query["aggregate"] if "aggregate" in query else False
     filter = query["filter"] if "filter" in query else True
     domains = []
@@ -169,6 +185,8 @@ def query(query):
     proto_ports['/udp']=''
     for d in domains:
         d[0]=datetime.datetime.fromtimestamp(d[0]).strftime('%Y-%m-%d %H:%M:%S')
+        if d[2] in mac2name:
+            d[2]=mac2name[d[2]]
         if d[4] in proto_ports:
             d[4]=proto_ports[d[4]]
     con.close()

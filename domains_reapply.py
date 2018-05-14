@@ -68,8 +68,10 @@ def main():
         print("empty dictionary of replacements, nothing to do")
         sys.exit(1)
     multiple_replace = MultiReplace(adict)
-    replace('/var/lib/pakon.db', multiple_replace)
-    replace('/srv/pakon/pakon-archive.db', multiple_replace)
+    if os.path.exists('/var/lib/pakon.db'):
+        replace('/var/lib/pakon.db', multiple_replace)
+    if os.path.exists('/srv/pakon/pakon-archive.db'):
+        replace('/srv/pakon/pakon-archive.db', multiple_replace)
 
 if __name__ == "__main__":
 	main()

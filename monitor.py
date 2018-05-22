@@ -19,7 +19,7 @@ import collections
 import queue
 import threading
 import gzip
-from cachetools import LRUCache, TTLCache
+from cachetools import LRUCache, TTLCache, cached
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -133,10 +133,21 @@ def load_replaces():
         print(e)
     return adict
 
-# converts textual timestamp to unixtime
-# time string is always assumed to be in local time, the timezone part in string is ignored
-# reason is that mktime ignores timezone in datetime object and I don't see any easy way how to do it properly (without pytz)
+@cached(TTLCache(maxsize=256, ttl=3600))
+def get_dev_mac(ip):
+    pid = subprocess.Popen(["ip", "neigh", "show", ip], stdout=subprocess.PIPE)
+    s = pid.communicate()[0].decode()
+    if not s:
+        return ("", "")
+    res = re.search(r"dev\s+([^\s]+)\s+.*lladdr\s+((?:[a-f\d]{1,2}\:){5}[a-f\d]{1,2})", s)
+    dev = res.groups()[0]
+    mac = res.groups()[1]
+    return dev, mac
+
 def timestamp2unixtime(timestamp):
+    # converts textual timestamp to unixtime
+    # time string is always assumed to be in local time, the timezone part in string is ignored
+    # reason is that mktime ignores timezone in datetime object and I don't see any easy way how to do it properly (without pytz)
     dt = datetime.datetime.strptime(timestamp[:-5],'%Y-%m-%dT%H:%M:%S.%f')
     timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond)/1000000
     return timestamp
@@ -157,14 +168,15 @@ def new_device_notify(mac, iface):
 def handle_dns(data, c):
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME'):
         logging.debug('Saving DNS data')
-        dns_cache.set(data['ether']['src'],data['dns']['rrname'],data['dns']['rdata'])
+        dev, mac=get_dev_mac(data['dest_ip'])
+        dns_cache.set(mac, data['dns']['rrname'], data['dns']['rdata'])
 
 def handle_flow(data, c):
     if data['proto'] not in ['TCP', 'UDP']:
         return
-    if 'app_proto' not in data.keys():
+    if 'app_proto' not in data.keys() or data['app_proto'] == 'failed':
         data['app_proto'] = '?'
-    if data['app_proto'] in ['failed', 'dns'] or int(data['flow']['bytes_toserver'])==0 or int(data['flow']['bytes_toclient'])==0:
+    if data['app_proto'] == 'dns' or int(data['flow']['bytes_toserver'])==0 or int(data['flow']['bytes_toclient'])==0:
         c.execute('DELETE FROM traffic WHERE flow_id = ?', (data['flow_id'],))
         if c.rowcount!=1:
             logging.debug("Can't delete flow")
@@ -196,27 +208,26 @@ def handle_http(data, c):
         logging.debug("Can't update flow")
 
 def handle_flow_start(data, notify_new_devices, c):
+    dev, mac=get_dev_mac(data['src_ip'])
     if data['proto'] not in ['TCP', 'UDP']:
         return
-    if 'app_proto' not in data.keys():
+    if 'app_proto' not in data.keys() or data['app_proto'] == 'failed':
         data['app_proto'] = '?'
-    if data['app_proto'] in ['failed', 'dns']:
+    if data['app_proto'] == 'dns':
         return
-    if "src_iface" not in data.keys():
-        data["src_iface"] = ""
-    if allowed_interfaces and data["src_iface"] not in allowed_interfaces:
-        logging.debug("Flow is not from allowed interface")
+    if dev not in allowed_interfaces:
+        logging.debug("This flow is not from allowed interface")
         return
-    if notify_new_devices and data['ether']['src'] not in known_devices:
-        known_devices.add(data['ether']['src'])
-        new_device_notify(data['ether']['src'], data["src_iface"])
-    hostname = dns_cache.get(data['ether']['src'], data['dest_ip'])
+    if notify_new_devices and mac not in known_devices:
+        known_devices.add(mac)
+        new_device_notify(mac, dev)
+    hostname = dns_cache.get(mac, data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
         hostname = domain_replace.replace(hostname)
     c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, app_hostname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (data['flow_id'], timestamp2unixtime(data['flow']['start']),
-                data['ether']['src'], data['src_ip'],
+                mac, data['src_ip'],
                 data['src_port'], data['dest_ip'], data['dest_port'],
                 data['proto'], data['app_proto'], hostname))
 

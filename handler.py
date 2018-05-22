@@ -152,7 +152,7 @@ def query(query):
         result = c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
         select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
-        ORDER BY app_hostname,app_proto,start""", where_parameters + where_parameters)
+        ORDER BY app_hostname,dest_port,start""", where_parameters + where_parameters)
         last=c.fetchone()
         if last:
             last = [i for i in last]
@@ -164,18 +164,14 @@ def query(query):
             row=[i for i in row]
             if not row[3]:
                 row[3]=''
-            if last[3]==row[3] and last[4]==row[4]:
-                if row[0] > last[0]+last[1]+1:
-                    domains.append(last)
-                else:
-                    last[1]=max(last[1],int(row[0]-last[0]+row[1]))
-                    last[5]=(row[5] if row[5]==last[5] or last[5]=='?' else "?")
-                    last[6]+=row[6]
-                    last[7]+=row[7]
-                    continue
+            if last[3]==row[3] and last[4]==row[4] and row[0]<=last[0]+last[1]+1:
+                last[1]=max(last[1],int(row[0]-last[0]+row[1]))
+                last[5]=(row[5] if row[5]==last[5] or last[5]=='?' else "?")
+                last[6]+=row[6]
+                last[7]+=row[7]
             else:
                 domains.append(last)
-            last=[i for i in row]
+                last=[i for i in row]
         if last:
             domains.append(last)
         domains = sorted(domains, key=lambda x: x[0])

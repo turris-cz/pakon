@@ -31,7 +31,7 @@ def load_names():
     mac2name = {}
     i = 0
     while uci_get("dhcp.@host[{}].name".format(i)):
-        mac = uci_get("dhcp.@host[{}].mac".format(i))
+        mac = uci_get("dhcp.@host[{}].mac".format(i)).lower()
         name = uci_get("dhcp.@host[{}].name".format(i))
         mac2name[mac]=name
         i = i + 1
@@ -54,6 +54,7 @@ def build_filter(query, name2mac):
         for i in range(len(query["mac"])):
             if query["mac"][i] in name2mac:
                 query["mac"][i]=name2mac[query["mac"][i]]
+            query["mac"][i]=query["mac"][i].lower()
         fill=['?' for m in query["mac"]]
         where_clause+=" AND src_mac IN ("+",".join(fill)+")"
         where_parameters+=query["mac"]
@@ -108,9 +109,9 @@ def query(query):
     domains = []
     if aggregate:
         last2 = [0,0]
-        result=c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
+        result=c.execute("""select start,duration,lower(src_mac) as src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
-        select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
+        select start,duration,lower(src_mac) as src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY src_mac,app_hostname,dest_port,start""", where_parameters + where_parameters)
         last=c.fetchone()
         if last:
@@ -149,9 +150,9 @@ def query(query):
             domains.append(last)
         domains = sorted(domains, key=lambda x: x[6]+x[7])
     else:
-        result = c.execute("""select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
+        result = c.execute("""select start,duration,lower(src_mac) as src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from traffic where flow_id IS NULL AND """+where_clause+"""
         UNION ALL
-        select start,duration,src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
+        select start,duration,lower(src_mac) as src_mac,coalesce(app_hostname,dest_ip) as app_hostname,(dest_port || '/' || lower(proto)) as dest_port,app_proto,bytes_send,bytes_received from archive.traffic where """+where_clause+"""
         ORDER BY app_hostname,dest_port,start""", where_parameters + where_parameters)
         last=c.fetchone()
         if last:

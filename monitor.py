@@ -138,8 +138,12 @@ def get_dev_mac(ip):
     pid = subprocess.Popen(["ip", "neigh", "show", ip], stdout=subprocess.PIPE)
     s = pid.communicate()[0].decode()
     if not s:
+        logging.debug("no entry in `ip neigh show` for {}".format(ip))
         return ("", "")
     res = re.search(r"dev\s+([^\s]+)\s+.*lladdr\s+((?:[a-f\d]{1,2}\:){5}[a-f\d]{1,2})", s)
+    if not res:
+        logging.warn("no match for dev&mac in output of `ip neigh show {}`: {}".format(ip,s))
+        return ("", "")
     dev = res.groups()[0]
     mac = res.groups()[1]
     return dev, mac

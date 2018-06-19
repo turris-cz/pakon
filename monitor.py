@@ -160,7 +160,7 @@ def new_device_notify(mac, iface):
             cmd = ["/usr/libexec/pakon-light/notify_new_device.sh", mac, iface]
             subprocess.call([arg.encode('utf-8') for arg in cmd])
         except OSError:
-            logger.error("failed to create notification")
+            logging.error("failed to create notification")
     thread = threading.Thread(target=new_device_notify_thread, args=(mac, iface, ))
     thread.daemon = True
     thread.start()

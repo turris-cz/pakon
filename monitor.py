@@ -269,7 +269,7 @@ def main():
         con.commit()
     except:
         logging.debug('Error cleaning flow_id')
-    notify_new_devices = uci_get('pakon.monitor.notify_new_devices')
+    notify_new_devices = int(uci_get('pakon.monitor.notify_new_devices'))
     if notify_new_devices:
         c.execute('ATTACH ? AS archive', (archive_path,))
         for row in c.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):

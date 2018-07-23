@@ -19,7 +19,16 @@ import collections
 import queue
 import threading
 import gzip
+import ctypes
+from ctypes.util import find_library
 from cachetools import LRUCache, TTLCache, cached
+
+libc = ctypes.CDLL(find_library('c'))
+PR_SET_PDEATHSIG = 1
+SIGKILL = 9
+
+def set_death_signal():
+    libc.prctl(PR_SET_PDEATHSIG, SIGKILL)
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -236,28 +245,74 @@ def handle_flow_start(data, notify_new_devices, c):
                 data['proto'], data['app_proto'], hostname))
 
 def exit_gracefully(signum, frame):
-    conntrack.terminate()
-    time.sleep(1)
+    data_source.close()
     if con:
         con.commit()
         con.close()
     dns_cache.dump()
-    conntrack.kill()
     sys.exit(0)
 
 dns_cache = DNSCache()
 domain_replace = MultiReplace(load_replaces())
 allowed_interfaces = []
 known_devices=set()
-conntrack = None
+data_source = None
 con = None
+
+class Source:
+    def __init__(self):
+        pass
+
+    def get_message(self):
+        pass
+
+    def close(self):
+        pass
+
+
+class ConntrackScriptSource(Source):
+    def __init__(self):
+        try:
+            self.devnull = open(os.devnull, 'w')
+            self.conntrack = subprocess.Popen(["/usr/bin/python3","/usr/libexec/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=self.devnull, preexec_fn=set_death_signal)
+        except OSError as e:
+            logging.error("Can't run flows_conntrack.py")
+            logging.error(e)
+            sys.exit(1)
+
+    def get_message(self):
+        return self.conntrack.stdout.readline().decode()
+
+    def close(self):
+        self.conntrack.terminate()
+
+
+class UnixSocketSource(Source):
+    def __init__(self):
+        try:
+            os.unlink("/var/run/pakon.sock")
+        except OSError:
+            pass
+        try:
+            self.client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            self.client.bind("/var/run/pakon.sock")
+        except OSError as e:
+            logging.error("Can't read socket")
+            logging.error(e)
+            sys.exit(1)
+
+    def get_message(self):
+        return self.client.makefile().readline()
+
+    def close(self):
+        self.client.close()
 
 def reload_replaces(signum, frame):
     logging.info("reloading domain replaces")
     domain_replace.setup(load_replaces())
 
 def main():
-    global allowed_interfaces, conntrack
+    global allowed_interfaces, data_source
     archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     dns_cache.try_load()
     con = sqlite3.connect('/var/lib/pakon.db')
@@ -275,13 +330,10 @@ def main():
         for row in c.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):
             known_devices.add(row[0])
         c.execute('DETACH archive')
-    try:
-        devnull = open(os.devnull, 'w')
-        conntrack = subprocess.Popen(["/usr/bin/python3","/usr/libexec/suricata_conntrack_flows.py","/var/run/pakon.sock"], shell=False, stdout=subprocess.PIPE, stderr=devnull)
-    except Exception as e:
-        logging.error("Can't run flows_conntrack.py")
-        logging.error(e)
-        sys.exit(1)
+    if uci_get('pakon.monitor.mode').strip() == 'filter':
+        data_source = ConntrackScriptSource()
+    else:
+        data_source = UnixSocketSource()
     signal.signal(signal.SIGINT, exit_gracefully)
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGUSR1, reload_replaces)
@@ -289,13 +341,10 @@ def main():
     logging.debug("Listening...")
     while True:
         try:
-            line = conntrack.stdout.readline().decode()
+            line = data_source.get_message()
             if not line:
                 break
-            line = line.strip()
             logging.debug(line)
-            if not line:
-                continue
             try:
                 data = json.loads(line)
             except ValueError:

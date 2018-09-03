@@ -57,6 +57,7 @@ def squash(from_details, to_details, up_to, window, size_threshold):
     c = con.cursor()
     logging.debug("Squashing flows - from detail_level {} to detail_level {}".format(from_details, to_details))
     to_be_deleted = []
+    c.execute('BEGIN TRANSACTION')
     for row in c.execute('SELECT rowid, start, (start+duration) AS end, duration, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM traffic WHERE details = ? AND start < ? ORDER BY start', (from_details, start,)):
         if row['rowid'] in to_be_deleted:
             continue
@@ -102,6 +103,7 @@ def squash(from_details, to_details, up_to, window, size_threshold):
             to_be_deleted.append(row['rowid'])
     for tbd in to_be_deleted:
         c.execute('DELETE FROM traffic WHERE rowid = ?', (tbd,))
+    c.execute('COMMIT')
     return len(to_be_deleted)
 
 def load_archive_rules():

@@ -47,7 +47,7 @@ def uci_get_time(opt, default = None):
     return ret
 
 archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
-con = sqlite3.connect(archive_path)
+con = sqlite3.connect(archive_path, timeout = 300.0)
 con.row_factory = sqlite3.Row
 
 def squash(from_details, to_details, up_to, window, size_threshold):

@@ -237,7 +237,7 @@ def handle_flow_start(data, notify_new_devices, c):
     hostname = dns_cache.get(mac, data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
-        hostname = domain_replace.replace(hostname)
+        hostname = domain_replace.replace(hostname.lower())
     c.execute('INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, app_hostname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 (data['flow_id'], timestamp2unixtime(data['flow']['start']),
                 mac, data['src_ip'],

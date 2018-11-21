@@ -47,7 +47,7 @@ def uci_get_time(opt, default = None):
     return ret
 
 archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
-con = sqlite3.connect(archive_path, timeout = 300.0)
+con = sqlite3.connect(archive_path, isolation_level = None, timeout = 300.0)
 con.row_factory = sqlite3.Row
 
 def squash(from_details, to_details, up_to, window, size_threshold):
@@ -126,15 +126,23 @@ now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 start = now-3600*24 #move flows from live DB to archive after 24hours
 
 c.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
-c.execute('INSERT INTO traffic SELECT start, duration, 0, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
-logging.info("moved {} flows from live to archive".format(c.rowcount))
-c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
-con.commit()
+c.execute('BEGIN')
+try:
+    c.execute('INSERT INTO traffic SELECT start, duration, 0, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
+    logging.info("moved {} flows from live to archive".format(c.rowcount))
+    c.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
+    c.execute('COMMIT')
+except sqlite3.Error:
+    c.execute('ROLLBACK')
+    logging.warn('could not move flows from live database to archive')
 
-#workaround for a bug in Python 3.6
-#https://bugs.python.org/issue28518
-con.isolation_level = None
+c.execute('SELECT COUNT(*) FROM live.traffic')
+logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
+
 con.execute('VACUUM live')
+
+c.execute('DETACH DATABASE live')
+
 con.isolation_level = ''
 
 rules = load_archive_rules()
@@ -156,8 +164,6 @@ c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.arch
 #TODO: think about when to do it, perform it once in a while?
 
 con.commit()
-c.execute('SELECT COUNT(*) FROM live.traffic')
-logging.info("{} flows in live database".format(c.fetchone()[0]))
 for i in range(len(rules)+1):
     c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
     logging.info("{} flows in archive on details level {}".format(c.fetchone()[0], i))

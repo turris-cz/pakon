@@ -150,12 +150,22 @@ def load_archive_rules():
     sorted(rules, key=lambda r: r["up_to"])
     return rules
 
-c = con.cursor()
-
 con.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
 start = 3600*24 #move flows from live DB to archive after 24hours
 squash('live', 0, { "up_to": start, "window": 1, "size_threshold": 0 })
 con.execute('VACUUM live')
+
+# maximum number of records in the live database - to prevent filling all available space
+# it's recommended not to touch this, unless you know really well what you're doing
+# filling up all available space may break your router
+hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+
+c = con.cursor()
+c.execute('SELECT COUNT(*) FROM traffic')
+count = int(c.fetchone()[0])
+if count > hard_limit:
+    logging.warning('over {} records in the archive database ({}) -> deleting', hard_limit, count)
+    con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)', hard_limit)
 
 c.execute('SELECT COUNT(*) FROM live.traffic')
 logging.info("{} flows remaining in live database".format(c.fetchone()[0]))

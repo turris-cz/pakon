@@ -45,6 +45,17 @@ def uci_get(opt):
     else:
         return out
 
+class everyN:
+    def __init__(self, cnt):
+        self.cnt = cnt
+        self.cur = 0
+    def __bool__(self):
+        self.cur += 1
+        if self.cnt == self.cur:
+            self.cur = 0
+            return True
+        return False
+
 class DNSCache:
     """DNS cache internally uses 2 types of cache.
     One (fast_cache)is smaller, with short TTL and there can be a lot of garbage - NS servers A/AAAA, CNAMEs
@@ -328,6 +339,11 @@ def main():
     signal.signal(signal.SIGUSR1, reload_replaces)
     allowed_interfaces = uci_get('pakon.monitor.interface')
     logging.debug("Listening...")
+    # maximum number of records in the live database - to prevent filling all available space
+    # it's recommended not to touch this, unless you know really well what you're doing
+    # filling all available space in /var/lib (tmpfs) will probably break your router
+    hard_limit = int(uci_get('pakon.monitor.database_limit') or 3000000)
+    run_check = everyN(100000)
     while True:
         try:
             line = data_source.get_message()
@@ -354,6 +370,13 @@ def main():
                 handle_flow_start(data, notify_new_devices, con)
             else:
                 logging.warn("Unknown event type")
+            if run_check:
+                c = con.cursor()
+                c.execute('SELECT COUNT(*) FROM traffic')
+                count = int(c.fetchone()[0])
+                if count > hard_limit:
+                    logging.warning('over {} records in the live database ({}) -> deleting', hard_limit, count)
+                    con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)', hard_limit)
         except KeyboardInterrupt:
             exit_gracefully()
         except IOError as e:

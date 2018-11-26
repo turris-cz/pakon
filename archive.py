@@ -47,7 +47,7 @@ def uci_get_time(opt, default = None):
     return ret
 
 archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
-con = sqlite3.connect(archive_path, isolation_level = None, timeout = 300.0)
+con = sqlite3.connect(archive_path, isolation_level = None, timeout = 30.0)
 con.row_factory = sqlite3.Row
 
 
@@ -123,7 +123,7 @@ def squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, sta
             add_to_insert(current_flow)
             current_flow = row
     add_to_insert(current_flow)
-    con.execute('BEGIN')
+    con.execute('BEGIN IMMEDIATE')
     con.executemany('INSERT INTO traffic (start, duration, details, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname)'
                      'VALUES (:start, :duration, :detail, :src_mac, :src_ip, :src_port, :dest_ip, :dest_port, :proto, :app_proto, :bytes_send, :bytes_received, :app_hostname)',
                      to_insert)
@@ -153,7 +153,6 @@ def load_archive_rules():
 con.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
 start = 3600*24 #move flows from live DB to archive after 24hours
 squash('live', 0, { "up_to": start, "window": 1, "size_threshold": 0 })
-con.execute('VACUUM live')
 
 # maximum number of records in the live database - to prevent filling all available space
 # it's recommended not to touch this, unless you know really well what you're doing
@@ -161,16 +160,16 @@ con.execute('VACUUM live')
 hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
 
 c = con.cursor()
+c.execute('SELECT COUNT(*) FROM live.traffic')
+logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
+
+con.execute('DETACH DATABASE live')
+
 c.execute('SELECT COUNT(*) FROM traffic')
 count = int(c.fetchone()[0])
 if count > hard_limit:
     logging.warning('over {} records in the archive database ({}) -> deleting', hard_limit, count)
     con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)', hard_limit)
-
-c.execute('SELECT COUNT(*) FROM live.traffic')
-logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
-
-con.execute('DETACH DATABASE live')
 
 rules = load_archive_rules()
 

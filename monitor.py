@@ -374,6 +374,7 @@ def main():
                 c = con.cursor()
                 c.execute('SELECT COUNT(*) FROM traffic')
                 count = int(c.fetchone()[0])
+                c.close()
                 if count > hard_limit:
                     logging.warning('over {} records in the live database ({}) -> deleting', hard_limit, count)
                     con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)', hard_limit)
@@ -384,6 +385,8 @@ def main():
                 raise
         except sqlite3.DatabaseError as e:
             logging.warn("Database error: "+str(e))
+        except sqlite3.OperationalError as e:
+            logging.warn("Database operational error: "+str(e))
 
 if __name__ == "__main__":
     main()

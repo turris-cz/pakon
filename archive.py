@@ -67,6 +67,7 @@ def squash(from_details, to_details, rules):
                 (i, d) = squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, start, rules)
                 inserted += i
                 deleted += d
+        con.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
     else:
         for row_mac in c.execute('SELECT DISTINCT src_mac FROM traffic WHERE details = ? AND start < ?', (from_details,start,)):
             src_mac = row_mac['src_mac']
@@ -123,14 +124,15 @@ def squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, sta
             add_to_insert(current_flow)
             current_flow = row
     add_to_insert(current_flow)
-    con.execute('BEGIN IMMEDIATE')
+    con.execute('BEGIN')
     con.executemany('INSERT INTO traffic (start, duration, details, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname)'
                      'VALUES (:start, :duration, :detail, :src_mac, :src_ip, :src_port, :dest_ip, :dest_port, :proto, :app_proto, :bytes_send, :bytes_received, :app_hostname)',
                      to_insert)
-    if from_details == 'live':
-        con.executemany('DELETE FROM live.traffic WHERE rowid = ?', to_delete)
-    else:
+    if from_details != 'live':
         con.executemany('DELETE FROM traffic WHERE rowid = ?', to_delete)
+    # if we're moving data from live, don't delete them individually, they will
+    # be deleted all at once in the end. The transaction cannot be atomic anyway,
+    # the database is in tmpfs, so try to delete them fast and backup live ASAP.
     con.execute('COMMIT')
     return (len(to_insert), len(to_delete))
 
@@ -163,7 +165,9 @@ c = con.cursor()
 c.execute('SELECT COUNT(*) FROM live.traffic')
 logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
 
+# all changes in live database is done, backup it
 con.execute('DETACH DATABASE live')
+subprocess.call(["/usr/libexec/pakon-light/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
 
 c.execute('SELECT COUNT(*) FROM traffic')
 count = int(c.fetchone()[0])

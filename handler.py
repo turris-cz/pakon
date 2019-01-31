@@ -222,8 +222,9 @@ def query(query):
     if aggregate:
         flows = get_aggregate_data_from_archive(con, where_clause, where_parameters, filter)
         flows += get_data_from_archive(con, where_clause, where_parameters, filter)
-        flows = aggregate_flows(flows)
-        flows.sort(key=lambda x: x[6]+x[7])
+        if flows:
+            flows = aggregate_flows(flows)
+            flows.sort(key=lambda x: x[6] + x[7])
     else:
         # sorted by time - archive data is always older than data from live database
         flows = get_data_from_archive(con, where_clause, where_parameters, filter)

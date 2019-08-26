@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-
-import fileinput
 import json
 import socket
-import os, os.path
-import string
+import os
+import os.path
 import sys
 import subprocess
 import re
@@ -16,12 +14,12 @@ import errno
 import logging
 import glob
 import collections
-import queue
 import threading
 import gzip
 import ctypes
 from ctypes.util import find_library
-from cachetools import LRUCache, TTLCache, cached
+from cachetools import TTLCache, LRUCache, cached
+
 
 libc = ctypes.CDLL(find_library('c'))
 PR_SET_PDEATHSIG = 1
@@ -221,7 +219,24 @@ def handle_tls(data, con):
 def handle_http(data, con):
     if 'hostname' not in data['http'].keys():
         return
-    con.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?', (domain_replace.replace(data['http']['hostname']), data['flow_id']))
+    con.execute('UPDATE traffic SET app_hostname = ? , app_proto = "http" WHERE flow_id = ?', (domain_replace.replace(data['http']['hostname']), data['flow_id']))
+
+def handle_alert(data, con):
+    con.execute("INSERT INTO alerts "
+                "(start, src_ip, src_port, dest_ip, dest_port, "
+                "proto, app_proto, gid, sid, rev, signature, category, severity, "
+                "bytes_send, bytes_received) "
+                "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (timestamp2unixtime(data['timestamp']),
+                 data['src_ip'], data['src_port'],
+                 data['dest_ip'], data['dest_port'],
+                 data['proto'].strip(),
+                 data['app_proto'].strip() if data['app_proto'] else "null",
+                 data['alert']['gid'], data['alert']['signature_id'], data['alert']['rev'],
+                 data['alert']['signature'].strip(), data['alert']['category'].strip(),
+                 data['alert']['severity'],
+                 data['flow']['bytes_toserver'] if 'flow' in data.keys() else "null",
+                 data['flow']['bytes_toclient'] if 'flow' in data.keys() else "null"))
 
 def handle_flow_start(data, notify_new_devices, con):
     dev, mac=get_dev_mac(data['src_ip'])
@@ -368,6 +383,8 @@ def main():
                 handle_http(data, con)
             elif data['event_type'] == 'flow_start' and data['flow']:
                 handle_flow_start(data, notify_new_devices, con)
+            elif data['event_type'] == 'alert':
+                handle_alert(data, con)
             else:
                 logging.warn("Unknown event type")
             if run_check:

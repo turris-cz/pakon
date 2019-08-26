@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-
-import fileinput
-import os, os.path
-import string
-import socket
 import sys
 import subprocess
-import re
 import time
 import datetime
-import sqlite3
-import signal
-import errno
 import logging
+from db_handler import database, tables
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -22,14 +14,13 @@ def uci_get(opt):
     delimiter = '__uci__delimiter__'
     chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
+    out, _ = chld.communicate()
+    out = out.strip().decode('ascii', 'ignore')
     if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
+       return out.split(delimiter)
+    return out
 
-def uci_get_time(opt, default = None):
+def uci_get_time(opt, default=None):
     ret = 0
     text = uci_get(opt)
     if not text:
@@ -46,153 +37,102 @@ def uci_get_time(opt, default = None):
         ret = int(text)
     return ret
 
-archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
-con = sqlite3.connect(archive_path, isolation_level = None, timeout = 30.0)
-con.row_factory = sqlite3.Row
+def squash(table, archive_table_name, rule):
+    now = int(time.mktime(datetime.datetime.now().timetuple()))
+    start = now - rule['up_to']
+    for grouper in table.groupers(start):
+        table.archive(grouper, start, rule)
+    table.insert_to_archive(archive_table_name)
+    table.delete_archived()
 
-
-def squash(from_details, to_details, rules):
-    global con
-    c = con.cursor()
-    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-    start = now - rules['up_to']
-    inserted = 0
-    deleted = 0
-    if from_details == 'live':
-        for row_mac in c.execute('SELECT DISTINCT src_mac FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,)):
-            src_mac = row_mac['src_mac']
-            c2 = con.cursor()
-            for row_hostname in c2.execute('SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname FROM live.traffic WHERE src_mac = ? AND start < ? AND flow_id IS NULL', (src_mac, start)):
-                hostname = row_hostname['hostname']
-                (i, d) = squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, start, rules)
-                inserted += i
-                deleted += d
-        con.execute('DELETE FROM live.traffic WHERE start < ? AND flow_id IS NULL', (start,))
-    else:
-        for row_mac in c.execute('SELECT DISTINCT src_mac FROM traffic WHERE details = ? AND start < ?', (from_details,start,)):
-            src_mac = row_mac['src_mac']
-            c2 = con.cursor()
-            for row_hostname in c2.execute('SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname FROM traffic WHERE details = ? AND src_mac = ? AND start < ?', (from_details, src_mac, start)):
-                hostname = row_hostname['hostname']
-                (i, d) = squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, start, rules)
-                inserted += i
-                deleted += d
-    logging.info('deleted %d flows from detail level %s, inserted %d flows to detail level %d', deleted, str(from_details), inserted, to_details)
-
-
-def squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, start, rules):
-    def add_to_insert(flow):
-        if flow['bytes_send'] + flow['bytes_received'] < rules['size_threshold']:
-            return
-        flow['detail'] = to_details
-        to_insert.append(flow)
-    def merge_flows(flow1, flow2):
-        if flow2['end'] > flow1['end']:
-            flow1['end'] = flow2['end']
-            flow1['duration'] = int(flow1['end'] - flow1['start'])
-        flow1['bytes_send'] += flow2['bytes_send']
-        flow1['bytes_received'] += flow2['bytes_received']
-        if flow1['src_ip'] != flow2['src_ip']:
-            flow1['src_ip'] = ''
-        if flow1['dest_ip'] != flow2['dest_ip']:
-            flow1['dest_ip'] = ''
-        if flow1['app_proto'] != flow2['app_proto']:
-            flow1['app_proto'] = ''
-        if flow1['app_hostname'] != flow2['app_hostname']:
-            flow1['app_hostname'] = ''
-    global con
-    c = con.cursor()
-    if from_details == 'live':
-        result = c.execute('SELECT rowid, (start+duration) AS end, * FROM live.traffic WHERE src_mac = ? AND COALESCE(app_hostname,dest_ip) = ? AND start < ? AND flow_id IS NULL ORDER BY dest_port, start', (src_mac, hostname, start))
-    else:
-        result = c.execute('SELECT rowid, (start+duration) AS end, * FROM traffic WHERE details = ? AND src_mac = ? AND COALESCE(app_hostname,dest_ip) = ? AND start < ? ORDER BY dest_port, start', (from_details, src_mac, hostname, start))
-    to_delete = []
-    to_insert = []
-    current_flow = None
-    for row in result:
-        to_delete.append((row['rowid'],))
-        row = dict(row)
-        row['start'] = float(row['start'])
-        row['end'] = float(row['end'])
-        row['bytes_send'] = int(row['bytes_send'])
-        row['bytes_received'] = int(row['bytes_received'])
-        if not current_flow:
-            current_flow = row
-        elif current_flow['dest_port'] == row['dest_port'] and current_flow['end'] + int(rules['window']) > row['start']:
-            merge_flows(current_flow, row)
-        else:
-            add_to_insert(current_flow)
-            current_flow = row
-    add_to_insert(current_flow)
-    con.execute('BEGIN')
-    con.executemany('INSERT INTO traffic (start, duration, details, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, bytes_send, bytes_received, app_hostname)'
-                     'VALUES (:start, :duration, :detail, :src_mac, :src_ip, :src_port, :dest_ip, :dest_port, :proto, :app_proto, :bytes_send, :bytes_received, :app_hostname)',
-                     to_insert)
-    if from_details != 'live':
-        con.executemany('DELETE FROM traffic WHERE rowid = ?', to_delete)
-    # if we're moving data from live, don't delete them individually, they will
-    # be deleted all at once in the end. The transaction cannot be atomic anyway,
-    # the database is in tmpfs, so try to delete them fast and backup live ASAP.
-    con.execute('COMMIT')
-    return (len(to_insert), len(to_delete))
-
-
-def load_archive_rules():
-    rules = []
+def load_archive_rules(src):
+    lvl_rules = dict()
     i = 0
-    while uci_get("pakon.@archive_rule[{}].up_to".format(i)):
-        up_to = uci_get_time("pakon.@archive_rule[{}].up_to".format(i))
-        window = uci_get_time("pakon.@archive_rule[{}].window".format(i))
-        size_threshold = int(uci_get("pakon.@archive_rule[{}].size_threshold".format(i)) or 0)
-        rules.append( { "up_to": up_to, "window": window, "size_threshold": size_threshold })
+    while uci_get("{0}.@archive_rule[{1}].up_to".format(src, i)):
+        level = uci_get("{0}.@archive_rule[{1}].level".format(src, i))
+        up_to = uci_get_time("{0}.@archive_rule[{1}].up_to".format(src, i))
+        window = uci_get_time("{0}.@archive_rule[{1}].window".format(src, i))
+        size_threshold = int(uci_get("{0}.@archive_rule[{1}].size_threshold".format(src, i)) or 0)
+        severity = uci_get("{0}.@archive_rule[{1}].severity".format(src, i)) or "*"
+        category = uci_get("{0}.@archive_rule[{1}].category".format(src, i) or "")
+        rule = {"up_to": up_to, "window": window, "size_threshold": size_threshold,
+                "severity":severity, "category":category}
+        if level not in lvl_rules:
+            lvl_rules[level] = list()
+            lvl_rules[level].append(rule)
+        else:
+            lvl_rules[level].append(rule)
         i = i + 1
-    if not rules: #if there is no rule (old configuration?) - add one default rule
-        rules.append( { "up_to": 86400, "window": 60, "size_threshold": 4096 })
-        logging.info('no rules in configuration - using default {}'.format(str(rules[0])))
-    sorted(rules, key=lambda r: r["up_to"])
-    return rules
+    if lvl_rules:
+        for rules in lvl_rules.values():
+            rules = sorted(rules, key=lambda r: r['up_to'])
+    else:
+        lvl_rules.append({0:[{"up_to": 86400, "window": 60, "size_threshold": 4096 , "severity":"*", "category":"all"}]})
+        logging.info("no rules in configuration - using default {0}".format(str(rules[0])))
+    return lvl_rules
 
-con.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
-start = 3600*24 #move flows from live DB to archive after 24hours
-squash('live', 0, { "up_to": start, "window": 1, "size_threshold": 0 })
 
-# maximum number of records in the live database - to prevent filling all available space
-# it's recommended not to touch this, unless you know really well what you're doing
-# filling up all available space may break your router
-hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+def main():
+    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    _con = database.Database(archive_path)
+    _con.attach_database("/var/lib/pakon.db", "live")
+    _start = 0#test reason - 3600*24 #move flows from live DB to archive after 24hours
+    _now = int(time.mktime(datetime.datetime.now().timetuple()))
+    # database connection, table name, details (dict(from:i, to:i+1)), list(grouperu)
+    live_alert_table = tables.Alert(_con, logging, "live.alerts", {"from":None, "to":0})
+    squash(live_alert_table, "alerts", {"up_to": _start, "window": 1, "size_threshold": 0, "severity":"*", "category":"all"})
+    live_flow_table = tables.Flow(_con, logging, "live.traffic", {"from":None, "to":0})
+    squash(live_flow_table, "traffic", {"up_to": _start, "window": 1, "size_threshold": 0, "severity":"*", "category":"all"})
 
-c = con.cursor()
-c.execute('SELECT COUNT(*) FROM live.traffic')
-logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
+    # maximum number of records in the live database - to prevent filling all available space
+    # it's recommended not to touch this, unless you know really well what you're doing
+    # filling up all available space may break your router
+    hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+    live_count = _con.select("select count(*) from live.traffic", None)[0][0]
+    logging.info("{0} flows remaining in live database".format(live_count))
 
-# all changes in live database is done, backup it
-con.execute('DETACH DATABASE live')
-subprocess.call(["/usr/libexec/pakon-light/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
+    # all changes in live database is done, backup it
+    _con.dettach_database("live")
+    subprocess.call(["/usr/libexec/bckp_pakon/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
 
-c.execute('SELECT COUNT(*) FROM traffic')
-count = int(c.fetchone()[0])
-if count > hard_limit:
-    logging.warning('over {} records in the archive database ({}) -> deleting', hard_limit, count)
-    con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)', hard_limit)
+    archive_count = _con.select("select count(*) from traffic", None)[0][0]
+    rowids_to_del = None
+    # TODO rewrite old method sel_sing_table to newer one (select)
+    if archive_count > hard_limit:
+        logging.warning('over {0} records in the archive database ({1}) -> deleting'.format(hard_limit, archive_count))
+        rowids_to_del = _con.select_single_table("traffic", "rowid", orderby="rowid desc limit -1 offset {0}".format(hard_limit))
+    if rowids_to_del:
+        _con.delete_in("traffic", "rowid", rowids_to_del)
 
-rules = load_archive_rules()
+    # UCI things
+    alert_rules = load_archive_rules("alert")
+    flow_rules = load_archive_rules("flow")
+    #if the rules changed (there is detail level that can't be generated using current rules)
+    #reset everything to detail level 0 -> perform the whole archivation again
+    max_flow_level = _con.select("select max(details) from traffic", None)[0][0] or 0
+    if max_flow_level > len(flow_rules):
+        logging.info("(flows):resetting all detail levels to 0")
+        _con.update("update traffic set details = 0", None)
+    max_alert_level = _con.select("select max(details) from alerts", None)[0][0] or 0
+    if max_alert_level > len(alert_rules):
+        logging.info("(alerts):resetting all detail levels to 0")
+        _con.update("update alerts set details = 0", None)
 
-#if the rules changed (there is detail level that can't be generated using current rules)
-#reset everything to detail level 0 -> perform the whole archivation again
-c.execute('SELECT DISTINCT(details) FROM traffic WHERE details > ?', (len(rules),))
-if c.fetchall():
-    logging.info('resetting all detail levels to 0')
-    c.execute('UPDATE traffic SET details = 0')
+    for lvl, rules in flow_rules.items():
+        for frule in rules:
+            flow_table = tables.Flow(_con, logging, "traffic", {"from":int(lvl), "to":int(lvl)+1})
+            squash(flow_table, "traffic", frule)
+            f_count = _con.select("select count(*) from traffic where details = ?", (lvl, ))[0][0]
+            logging.info("{0} flows remaining in archive on detail level {1}".format(f_count, lvl))
 
-for i in range(len(rules)):
-    squash(i, i+1, rules[i])
-now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
+    for lvl, rules in alert_rules.items():
+        for arule in rules:
+            alert_table = tables.Alert(_con, logging, "alerts", {"from":int(lvl), "to":int(lvl)+1})
+            squash(alert_table, "alerts", arule)
+            a_count = _con.select("select count(*) from alerts where details = ?", (lvl, ))[0][0]
+            logging.info("{0} alerts remaining in archive on detail level {1}".format(a_count, lvl))
+    # TODO remove older than uci 'keep'
+    _con.close()
 
-#c.execute('VACUUM')
-#performing it every time is bad - it causes the whole database file to be rewritten
-#TODO: think about when to do it, perform it once in a while?
-
-for i in range(len(rules)+1):
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
-    logging.info("{} flows remaining in archive on details level {}".format(c.fetchone()[0], i))
+if __name__ == "__main__":
+    main()

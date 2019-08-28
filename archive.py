@@ -131,8 +131,9 @@ def main():
             squash(alert_table, "alerts", arule)
             a_count = _con.select("select count(*) from alerts where details = ?", (lvl, ))[0][0]
             logging.info("{0} alerts remaining in archive on detail level {1}".format(a_count, lvl))
-    # TODO remove older than uci 'keep'
-    _con.close()
 
+    _con.update("delete from traffic where start < ?", (_now - uci_get_time("flow.archive.keep", "4w"), ))
+    _con.update("delete from alerts where start < ?", (_now - uci_get_time("alert.archive.keep", "4w"), ))
+    _con.close()
 if __name__ == "__main__":
     main()

@@ -29,5 +29,8 @@ class Record():
     def set(self, item, value):
         self.rec[item] = value
 
+    def set_grouper(self, item, value):
+        self.rec['grouper'][item] = value
+
     def dur_plus(self, dur):
         self.rec['duration'] += dur

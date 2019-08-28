@@ -249,11 +249,15 @@ class Alert(Table):
                 self.to_del.append(row['rowid'])
             if "duration" not in row.keys():
                 row['duration'] = 0
+            if "count" not in row.keys():
+                _grouper['count'] = 1
+            else:
+                _grouper['count'] = self.int_parse(row['count'])[0]
             start = self.float_parse(row['start'])[0]
             send, recv = self.int_parse(row['bytes_send'], row['bytes_received'])
             window, duration = self.int_parse(rule['window'], row['duration'])
             end = start + duration
-            cur_record = Record(start, end, _grouper, row['src_ip'],
+            cur_record = Record(start, end, dict(_grouper), row['src_ip'],
                                 row['src_port'], row['dest_ip'], row['dest_port'],
                                 row['proto'], row['app_proto'], send, recv)
             if not prev_record:
@@ -273,6 +277,7 @@ class Alert(Table):
             prev.dur_plus(int(cur.get('start')) - int(prev.get('start')))
         prev.set('bytes_send', (prev.get('bytes_send') + cur.get('bytes_send')))
         prev.set('bytes_received', (prev.get('bytes_received') + cur.get('bytes_received')))
+        prev.set_grouper('count', prev.get('grouper')['count'] + cur.get('grouper')['count'])
         if prev.get('src_ip') != cur.get('src_ip'):
             prev.set('src_ip', '')
         if prev.get('dest_ip') != cur.get('dest_ip'):

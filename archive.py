@@ -4,38 +4,11 @@ import subprocess
 import time
 import datetime
 import logging
+import uci
 from db_handler import database, tables
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, _ = chld.communicate()
-    out = out.strip().decode('ascii', 'ignore')
-    if out.find(delimiter) != -1:
-       return out.split(delimiter)
-    return out
-
-def uci_get_time(opt, default=None):
-    ret = 0
-    text = uci_get(opt)
-    if not text:
-        text = default
-    if text[-1:].upper() == 'M':
-        ret = int(text[:-1]) * 60
-    elif text[-1:].upper() == 'H':
-        ret = int(text[:-1]) * 3600
-    elif text[-1:].upper() == 'D':
-        ret = int(text[:-1]) * 24 * 3600
-    elif text[-1:].upper() == 'W':
-        ret = int(text[:-1]) * 7 * 24 * 3600
-    else:
-        ret = int(text)
-    return ret
 
 def squash(table, archive_table_name, rule):
     now = int(time.mktime(datetime.datetime.now().timetuple()))
@@ -48,13 +21,13 @@ def squash(table, archive_table_name, rule):
 def load_archive_rules(src):
     lvl_rules = dict()
     i = 0
-    while uci_get("{0}.@archive_rule[{1}].up_to".format(src, i)):
-        level = uci_get("{0}.@archive_rule[{1}].level".format(src, i))
-        up_to = uci_get_time("{0}.@archive_rule[{1}].up_to".format(src, i))
-        window = uci_get_time("{0}.@archive_rule[{1}].window".format(src, i))
-        size_threshold = int(uci_get("{0}.@archive_rule[{1}].size_threshold".format(src, i)) or 0)
-        severity = uci_get("{0}.@archive_rule[{1}].severity".format(src, i)) or "*"
-        category = uci_get("{0}.@archive_rule[{1}].category".format(src, i) or "")
+    while uci.get("{0}.@archive_rule[{1}].up_to".format(src, i)):
+        level = uci.get("{0}.@archive_rule[{1}].level".format(src, i))
+        up_to = uci.get_time("{0}.@archive_rule[{1}].up_to".format(src, i))
+        window = uci.get_time("{0}.@archive_rule[{1}].window".format(src, i))
+        size_threshold = int(uci.get("{0}.@archive_rule[{1}].size_threshold".format(src, i)) or 0)
+        severity = uci.get("{0}.@archive_rule[{1}].severity".format(src, i)) or "*"
+        category = uci.get("{0}.@archive_rule[{1}].category".format(src, i) or "")
         rule = {"up_to": up_to, "window": window, "size_threshold": size_threshold,
                 "severity":severity, "category":category}
         if level not in lvl_rules:
@@ -73,7 +46,7 @@ def load_archive_rules(src):
 
 
 def main():
-    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     _con = database.Database(archive_path)
     _con.attach_database("/var/lib/pakon.db", "live")
     _start = 0#test reason - 3600*24 #move flows from live DB to archive after 24hours
@@ -87,7 +60,7 @@ def main():
     # maximum number of records in the live database - to prevent filling all available space
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling up all available space may break your router
-    hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+    hard_limit = int(uci.get('pakon.archive.database_limit') or 10000000)
     live_count = _con.select("select count(*) from live.traffic", None)[0][0]
     logging.info("{0} flows remaining in live database".format(live_count))
 
@@ -132,8 +105,10 @@ def main():
             a_count = _con.select("select count(*) from alerts where details = ?", (lvl, ))[0][0]
             logging.info("{0} alerts remaining in archive on detail level {1}".format(a_count, lvl))
 
-    _con.update("delete from traffic where start < ?", (_now - uci_get_time("flow.archive.keep", "4w"), ))
-    _con.update("delete from alerts where start < ?", (_now - uci_get_time("alert.archive.keep", "4w"), ))
+    _con.update("delete from traffic where start < ?", (_now - uci.get_time("flow.archive.keep", "4w"), ))
+    _con.update("delete from alerts where start < ?", (_now - uci.get_time("alert.archive.keep", "4w"), ))
     _con.close()
+
+
 if __name__ == "__main__":
     main()

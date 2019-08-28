@@ -1,20 +1,9 @@
 #!/usr/bin/env python3
-
 import os
 import sqlite3
 import subprocess
+import uci
 
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 os.makedirs("/var/lib", exist_ok=True)
 con = sqlite3.connect('/var/lib/pakon.db')
@@ -28,7 +17,7 @@ c.execute('PRAGMA user_version=1')
 con.commit()
 con.close()
 
-archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
 os.makedirs(os.path.dirname(os.path.abspath(archive_path)), exist_ok=True)
 con = sqlite3.connect(archive_path)
 c = con.cursor()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import sys
 import time
@@ -13,28 +12,17 @@ import json
 import glob
 import subprocess
 import socketserver
+import uci
 
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 proto_ports = {'22/tcp': 'ssh', '80/tcp': 'http', '443/tcp': 'https', '53/tcp': 'dns', '53/udp': 'dns', '143/tcp': 'imap', '993/tcp': 'imaps', '587/tcp': 'smtp', '995/tcp': 'pop3s', '25/tcp': 'smtp', '465/tcp': 'smtps', '110/tcp': 'pop3'}
-
 
 def load_names():
     mac2name = {}
     i = 0
-    while uci_get("dhcp.@host[{}].name".format(i)):
-        mac = uci_get("dhcp.@host[{}].mac".format(i)).lower()
-        name = uci_get("dhcp.@host[{}].name".format(i))
+    while uci.get("dhcp.@host[{}].name".format(i)):
+        mac = uci.get("dhcp.@host[{}].mac".format(i)).lower()
+        name = uci.get("dhcp.@host[{}].name".format(i))
         mac2name[mac]=name
         i = i + 1
     return mac2name
@@ -207,7 +195,7 @@ def aggregate_flows(flows):
 
 def query(query):
     mac2name = load_names()
-    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     con = sqlite3.connect('/var/lib/pakon.db')
     con.row_factory = sqlite3.Row
     con.execute('ATTACH DATABASE ? AS archive', (archive_path,))

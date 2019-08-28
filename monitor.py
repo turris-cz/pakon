@@ -17,6 +17,7 @@ import collections
 import threading
 import gzip
 import ctypes
+import uci
 from ctypes.util import find_library
 from cachetools import TTLCache, LRUCache, cached
 
@@ -30,18 +31,6 @@ def set_death_signal():
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 class everyN:
     def __init__(self, cnt):
@@ -329,7 +318,7 @@ def reload_replaces(signum, frame):
 
 def main():
     global allowed_interfaces, data_source
-    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     dns_cache.try_load()
     # isolation_level=None for autocommit mode - we dont want long-lasting transactions
     con = sqlite3.connect('/var/lib/pakon.db', isolation_level=None)
@@ -339,25 +328,25 @@ def main():
         con.execute('DELETE FROM traffic WHERE flow_id IS NOT NULL')
     except:
         logging.debug('Error cleaning flow_id')
-    notify_new_devices = int(uci_get('pakon.monitor.notify_new_devices'))
+    notify_new_devices = int(uci.get('pakon.monitor.notify_new_devices'))
     if notify_new_devices:
         con.execute('ATTACH ? AS archive', (archive_path,))
         for row in con.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):
             known_devices.add(row[0])
         con.execute('DETACH archive')
-    if uci_get('pakon.monitor.mode').strip() == 'filter':
+    if uci.get('pakon.monitor.mode').strip() == 'filter':
         data_source = ConntrackScriptSource()
     else:
         data_source = UnixSocketSource()
     signal.signal(signal.SIGINT, exit_gracefully)
     signal.signal(signal.SIGTERM, exit_gracefully)
     signal.signal(signal.SIGUSR1, reload_replaces)
-    allowed_interfaces = uci_get('pakon.monitor.interface')
+    allowed_interfaces = uci.get('pakon.monitor.interface')
     logging.debug("Listening...")
     # maximum number of records in the live database - to prevent filling all available space
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling all available space in /var/lib (tmpfs) will probably break your router
-    hard_limit = int(uci_get('pakon.monitor.database_limit') or 3000000)
+    hard_limit = int(uci.get('pakon.monitor.database_limit') or 3000000)
     run_check = everyN(100000)
     while True:
         try:

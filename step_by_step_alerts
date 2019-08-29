@@ -1,0 +1,34 @@
+install pakon
+update database to newest version with alerts table
+enable rules /etc/suricata-pakon/suricata.yaml (uncomment)
+add custom rules if needed - docs:
+https://suricata.readthedocs.io/en/suricata-4.1.2/rules/index.html
+enable alerts /etc/suricata-pakon/output_conf.d/pakon.yaml
+example: (
+     eve-log:
+         enabled: yes
+         filetype: unix_dgram
+         filename: /var/run/pakon.sock
+         types:
+           - flow
+           - flow_start
+           - dns:
+               query: no
+           - tls:
+               extended: yes
+           - http:
+               extended: yes
+           - alert:
+               metadata: yes
+)
+restart pakon
+ - /etc/init.d/suricata-pakon
+ - /etc/init.d/pakon-hadler
+ - /etc/init.d/pakon-monitor
+
+
+--------------------------------------------------------------------
+config file (/etc/config) divided into two files
+    - alert
+    - flow
+    - pakon

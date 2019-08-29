@@ -1,0 +1,39 @@
+config archive 'archive'
+	option keep 4w
+
+# values below are set for debugging
+# it is more like template
+config archive_rule
+	option level 0 # level 0 aggregated to level 1 and so on
+	option up_to 1
+	option window 1800
+	option severity * # possible inputs: * | <X | >X | 'X, Y' | X
+	option category all # possible inputs: all | 'category_a,category_b,category_c' | category_a
+
+config archive_rule
+	option level 1
+	option up_to 10
+	option window 1800
+	option severity 2
+	option category all
+
+config archive_rule
+	option level 1
+	option up_to 10
+	option window 1800
+	option severity 1
+	option category all
+
+config archive_rule
+	option level 2
+	option up_to 10
+	option window 1800
+	option severity *
+	option category all
+
+config archive_rule
+	option level 3
+	option up_to 1
+	option window 180000
+	option severity *
+	option category all

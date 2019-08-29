@@ -23,29 +23,19 @@ class Table():
     def int_parse(self, *args):
         parsed = list()
         for arg in args:
-            try:
-                if arg:
-                    parsed.append(int(arg))
-                else:
-                    parsed.append(0)
-            except ValueError:
-                raise Exception("valer")
-            except TypeError:
-                raise Exception("typer")
+            if arg:
+                parsed.append(int(arg))
+            else:
+                parsed.append(0)
         return parsed
 
     def float_parse(self, *args):
         parsed = list()
         for arg in args:
-            try:
-                if arg:
-                    parsed.append(float(arg))
-                else:
-                    parsed.append(0)
-            except ValueError:
-                raise Exception("valer")
-            except TypeError:
-                raise Exception("typer")
+            if arg:
+                parsed.append(float(arg))
+            else:
+                parsed.append(0)
         return parsed
 
     def delete_archived(self):
@@ -161,8 +151,9 @@ class Flow(Table):
             send, recv, window = self.int_parse(row['bytes_send'],
                                                 row['bytes_received'],
                                                 rule['window'])
-            cur_record = Record(start, end, _grouper, row['src_ip'], row['src_port'], row['dest_ip']
-                                , row['dest_port'], row['proto'], row['app_proto'], send, recv)
+            cur_record = Record(start, end, dict(_grouper), row['src_ip'], row['src_port'],
+                                row['dest_ip'], row['dest_port'], row['proto'],
+                                row['app_proto'], send, recv)
             if not prev_record:
                 prev_record = cur_record
             elif prev_record.get('dest_port') == row['dest_port'] and prev_record.get('start') + prev_record.get('duration') + window > cur_record.get('start'):
@@ -174,7 +165,7 @@ class Flow(Table):
         self.to_ins.append(prev_record)
 
     def merge(self, prev, cur):
-        """merge two records
+        """merge two flows
         """
         if cur.get('start') + cur.get('duration') > prev.get('start') + prev.get('duration'):
             prev.dur_plus(cur.get('duration'))
@@ -228,17 +219,17 @@ class Alert(Table):
             "start":_start
         }
         if self.details['from'] is not None:
-            sql = str("select rowid, * from {0}"#alerts
+            sql = str("select rowid, * from alerts"
                       " where sid = :sid and signature = :sig"
-                      "  {1} {2}"
+                      "  {0} {1}"
                       " and details = :det and start < :start order by dest_port, start")
         else:
-            sql = str("select rowid, * from {0}"#live.alerts
+            sql = str("select rowid, * from live.alerts"
                       " where sid = :sid and signature = :sig"
-                      " {1} {2}"
+                      " {0} {1}"
                       " and start < :start order by dest_port, start")
         sql, data_bind = self.sev_cat_handle(rule['severity'], rule['category'], sql, data_bind)
-        results = self.database.select(sql.format(self.table), (data_bind))
+        results = self.database.select(sql, (data_bind))
         if not results:
             self.logging.warning("a rule ({0}) has no matches in database".format(rule))
             return
@@ -325,5 +316,5 @@ class Alert(Table):
         else:
             cat = " and category = :cat"
             data_bind['cat'] = category
-        sql = sql.format(self.table, sev, cat)
+        sql = sql.format(sev, cat)
         return (sql, data_bind)

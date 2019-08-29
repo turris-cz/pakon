@@ -49,7 +49,7 @@ def main():
     archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     _con = database.Database(archive_path)
     _con.attach_database("/var/lib/pakon.db", "live")
-    _start = 0#test reason - 3600*24 #move flows from live DB to archive after 24hours
+    _start = 3600*24 #move flows from live DB to archive after 24hours
     _now = int(time.mktime(datetime.datetime.now().timetuple()))
     # database connection, table name, details (dict(from:i, to:i+1)), list(grouperu)
     live_alert_table = tables.Alert(_con, logging, "live.alerts", {"from":None, "to":0})
@@ -66,14 +66,13 @@ def main():
 
     # all changes in live database is done, backup it
     _con.dettach_database("live")
-    subprocess.call(["/usr/libexec/bckp_pakon/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
+    subprocess.call(["/usr/libexec/pakon-light/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
 
     archive_count = _con.select("select count(*) from traffic", None)[0][0]
     rowids_to_del = None
-    # TODO rewrite old method sel_sing_table to newer one (select)
     if archive_count > hard_limit:
         logging.warning('over {0} records in the archive database ({1}) -> deleting'.format(hard_limit, archive_count))
-        rowids_to_del = _con.select_single_table("traffic", "rowid", orderby="rowid desc limit -1 offset {0}".format(hard_limit))
+        rowids_to_del = _con.select("select rowid from traffic order by rowid desc limit -1 offset ?", (hard_limit, ))
     if rowids_to_del:
         _con.delete_in("traffic", "rowid", rowids_to_del)
 
@@ -82,12 +81,15 @@ def main():
     flow_rules = load_archive_rules("flow")
     #if the rules changed (there is detail level that can't be generated using current rules)
     #reset everything to detail level 0 -> perform the whole archivation again
-    max_flow_level = _con.select("select max(details) from traffic", None)[0][0] or 0
-    if max_flow_level > len(flow_rules):
+    flow_lvl_highest = int(max(list(flow_rules.keys())))
+    max_flow_level = int(_con.select("select max(details) from traffic", None)[0][0] or 0)
+    if max_flow_level > flow_lvl_highest:
         logging.info("(flows):resetting all detail levels to 0")
         _con.update("update traffic set details = 0", None)
-    max_alert_level = _con.select("select max(details) from alerts", None)[0][0] or 0
-    if max_alert_level > len(alert_rules):
+
+    alert_lvl_highest = int(max(list(flow_rules.keys())))
+    max_alert_level = int(_con.select("select max(details) from alerts", None)[0][0] or 0)
+    if max_alert_level > alert_lvl_highest:
         logging.info("(alerts):resetting all detail levels to 0")
         _con.update("update alerts set details = 0", None)
 

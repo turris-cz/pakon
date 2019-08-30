@@ -1,6 +1,8 @@
 config archive 'archive'
 	option keep 4w
 
+# read by levels (0, 1, 2, ...)
+# then from up to bottom
 config archive_rule
 	option level 0
 	option up_to 1d

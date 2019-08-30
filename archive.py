@@ -36,12 +36,9 @@ def load_archive_rules(src):
         else:
             lvl_rules[level].append(rule)
         i = i + 1
-    if lvl_rules:
-        for rules in lvl_rules.values():
-            rules = sorted(rules, key=lambda r: r['up_to'])
-    else:
+    if not lvl_rules:
         lvl_rules.append({0:[{"up_to": 86400, "window": 60, "size_threshold": 4096 , "severity":"*", "category":"all"}]})
-        logging.info("no rules in configuration - using default {0}".format(str(rules[0])))
+        logging.info("no rules in configuration - using default one")
     return lvl_rules
 
 

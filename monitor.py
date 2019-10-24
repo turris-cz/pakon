@@ -325,6 +325,7 @@ def main():
             dtype=str,
             default='/srv/pakon/pakon-archive.db'
         )
+        # TODO: add defaults to prevent unexpected crashes?
         notify_new_devices = uci.get('pakon.monitor.notify_new_devices', dtype=int)
         pakon_monitor_mode = uci.get('pakon.monitor.mode', dtype=str)
         allowed_interfaces = uci.get('pakon.monitor.interface', dtype=str)

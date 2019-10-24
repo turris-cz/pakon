@@ -2,7 +2,7 @@
 import os
 import sqlite3
 import subprocess
-import uci
+from euci import EUci
 
 
 os.makedirs("/var/lib", exist_ok=True)
@@ -17,7 +17,13 @@ c.execute('PRAGMA user_version=1')
 con.commit()
 con.close()
 
-archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+with EUci() as uci:
+    archive_path = uci.get(
+        'pakon', 'archive', 'path',
+        dtype=str,
+        default='/srv/pakon/pakon-archive.db'
+    )
+
 os.makedirs(os.path.dirname(os.path.abspath(archive_path)), exist_ok=True)
 con = sqlite3.connect(archive_path)
 c = con.cursor()

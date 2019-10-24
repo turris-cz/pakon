@@ -4,7 +4,8 @@ import subprocess
 import time
 import datetime
 import logging
-import uci
+from euci import EUci
+from uci_tools import timestr_to_seconds
 from db_handler import database, tables
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -43,7 +44,32 @@ def load_archive_rules(src):
 
 
 def main():
-    archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    with EUci() as uci:
+        archive_path = uci.get(
+            'pakon', 'archive', 'path',
+            dtype=str,
+            default='/srv/pakon/pakon-archive.db'
+        )
+
+        # maximum number of records in the live database - to prevent filling all available space
+        # it's recommended not to touch this, unless you know really well what you're doing
+        # filling up all available space may break your router
+        hard_limit = uci.get(
+            'pakon', 'archive', 'database_limit',
+            dtype=int,
+            default=10000000
+        )
+        flow_archive_keep = uci.get(
+            "flow", "archive", "keep",
+            dtype=str,
+            default="4w"
+        )
+        alert_archive_keep = uci.get(
+            "alert", "archive", "keep",
+            dtype=str,
+            default="4w"
+        )
+
     _con = database.Database(archive_path)
     _con.attach_database("/var/lib/pakon.db", "live")
     _start = 3600*24 #move flows from live DB to archive after 24hours
@@ -54,10 +80,6 @@ def main():
     live_flow_table = tables.Flow(_con, logging, "live.traffic", {"from":None, "to":0})
     squash(live_flow_table, "traffic", {"up_to": _start, "window": 1, "size_threshold": 0, "severity":"*", "category":"all"})
 
-    # maximum number of records in the live database - to prevent filling all available space
-    # it's recommended not to touch this, unless you know really well what you're doing
-    # filling up all available space may break your router
-    hard_limit = int(uci.get('pakon.archive.database_limit') or 10000000)
     live_count = _con.select("select count(*) from live.traffic", None)[0][0]
     logging.info("{0} flows remaining in live database".format(live_count))
 
@@ -104,8 +126,8 @@ def main():
             a_count = _con.select("select count(*) from alerts where details = ?", (lvl, ))[0][0]
             logging.info("{0} alerts remaining in archive on detail level {1}".format(a_count, lvl))
 
-    _con.update("delete from traffic where start < ?", (_now - uci.get_time("flow.archive.keep", "4w"), ))
-    _con.update("delete from alerts where start < ?", (_now - uci.get_time("alert.archive.keep", "4w"), ))
+    _con.update("delete from traffic where start < ?", (_now - timestr_to_seconds(flow_archive_keep), ))
+    _con.update("delete from alerts where start < ?", (_now - timestr_to_seconds(alert_archive_keep), ))
     _con.close()
 
 

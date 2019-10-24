@@ -12,7 +12,7 @@ import json
 import glob
 import subprocess
 import socketserver
-import uci
+from euci import EUci
 
 
 proto_ports = {'22/tcp': 'ssh', '80/tcp': 'http', '443/tcp': 'https', '53/tcp': 'dns', '53/udp': 'dns', '143/tcp': 'imap', '993/tcp': 'imaps', '587/tcp': 'smtp', '995/tcp': 'pop3s', '25/tcp': 'smtp', '465/tcp': 'smtps', '110/tcp': 'pop3'}
@@ -195,7 +195,14 @@ def aggregate_flows(flows):
 
 def query(query):
     mac2name = load_names()
-    archive_path = uci.get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+
+    with EUci() as uci:
+        archive_path = uci.get(
+            'pakon', 'archive', 'path',
+            dtype='str',
+            default='/srv/pakon/pakon-archive.db'
+        )
+
     con = sqlite3.connect('/var/lib/pakon.db')
     con.row_factory = sqlite3.Row
     con.execute('ATTACH DATABASE ? AS archive', (archive_path,))

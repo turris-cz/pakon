@@ -5,7 +5,6 @@ import time
 import datetime
 import logging
 from euci import EUci
-from uci_tools import timestr_to_seconds
 from db_handler import database, tables
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -41,6 +40,21 @@ def load_archive_rules(src):
         lvl_rules.append({0:[{"up_to": 86400, "window": 60, "size_threshold": 4096 , "severity":"*", "category":"all"}]})
         logging.info("no rules in configuration - using default one")
     return lvl_rules
+
+
+def timestr_to_seconds(text):
+    ret = 0
+    if text[-1:].upper() == 'M':
+        ret = int(text[:-1]) * 60
+    elif text[-1:].upper() == 'H':
+        ret = int(text[:-1]) * 3600
+    elif text[-1:].upper() == 'D':
+        ret = int(text[:-1]) * 24 * 3600
+    elif text[-1:].upper() == 'W':
+        ret = int(text[:-1]) * 7 * 24 * 3600
+    else:
+        ret = int(text)
+    return ret
 
 
 def main():

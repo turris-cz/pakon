@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import fileinput
 import json
 import socket
@@ -22,6 +20,8 @@ import gzip
 import ctypes
 from ctypes.util import find_library
 from cachetools import LRUCache, TTLCache, cached
+
+from .maintain import backup, database
 
 libc = ctypes.CDLL(find_library('c'))
 PR_SET_PDEATHSIG = 1
@@ -251,6 +251,7 @@ def exit_gracefully(signum, frame):
         con.commit()
         con.close()
     dns_cache.dump()
+    backup.backup_sqlite()
     sys.exit(0)
 
 dns_cache = DNSCache()
@@ -312,7 +313,16 @@ def reload_replaces(signum, frame):
     logging.info("reloading domain replaces")
     domain_replace.setup(load_replaces())
 
+
+def database_precheck():
+    if not database.databases_integrity_check():
+        database.create_databases()
+
+
 def main():
+    # check database integrity first
+    database_precheck()
+
     global allowed_interfaces, data_source
     archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
     dns_cache.try_load()

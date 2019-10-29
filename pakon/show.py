@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 import time
@@ -107,64 +105,60 @@ def arg_parser():
                         )
     return parser.parse_args()
 
-#workaround for relative datetime options for -s/-e (begins with -):
-# don't consider -[0-9] to be argument - prepend space - this is enough for argparse
-for i, arg in enumerate(sys.argv):
-  if (arg[0] == '-') and len(arg)>1 and arg[1].isdigit(): sys.argv[i] = ' ' + arg
-args=arg_parser()
-query={}
-if args.start:
-    query["start"]=args.start
-if args.end:
-    query["end"]=args.end
-if args.mac:
-    query["mac"]=args.mac
-if args.hostname:
-    query["hostname"]=args.hostname
-if args.no_filter:
-    query["filter"]=False
-if args.aggregate:
-    query["aggregate"]=True
-query=json.dumps(query)
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-try:
-    sock.connect("/var/run/pakon-query.sock")
-    sock.sendall((query+"\n").encode())
-    with sock.makefile() as f:
-        response = f.readline().strip()
-except:
-    print("Can't get data from pakon-handler. Is it running?")
-    sys.exit(1)
-finally:
-    sock.close()
 
-if args.json:
-    print(response)
-    sys.exit(0)
+def main():
+    #workaround for relative datetime options for -s/-e (begins with -):
+    # don't consider -[0-9] to be argument - prepend space - this is enough for argparse
+    for i, arg in enumerate(sys.argv):
+        if (arg[0] == '-') and len(arg)>1 and arg[1].isdigit(): sys.argv[i] = ' ' + arg
+    args=arg_parser()
+    query={}
+    if args.start:
+        query["start"]=args.start
+    if args.end:
+        query["end"]=args.end
+    if args.mac:
+        query["mac"]=args.mac
+    if args.hostname:
+        query["hostname"]=args.hostname
+    if args.no_filter:
+        query["filter"]=False
+    if args.aggregate:
+        query["aggregate"]=True
+    query=json.dumps(query)
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect("/var/run/pakon-query.sock")
+        sock.sendall((query+"\n").encode())
+        with sock.makefile() as f:
+            response = f.readline().strip()
+    except:
+        print("Can't get data from pakon-handler. Is it running?")
+        sys.exit(1)
+    finally:
+        sock.close()
 
-try:
     data=json.loads(response)
-except:
-    print("Invalid data received, probably a corrupt database")
-    sys.exit(1)
-
-if not data:
-    print("no records to show")
-    sys.exit(0)
-
-for i in range(len(data)):
-    if data[i][1]==0:
-        data[i][1]="<1s"
-    else:
-        data[i][1]=str(data[i][1])+"s"
-    if data[i][3] and len(data[i][3])>40:
-        data[i][3]="..."+data[i][3][-40:]
-    data[i][6]=size_fmt(data[i][6])
-    data[i][7]=size_fmt(data[i][7])
-    data[i]=[str(c) for c in data[i]]
-data.insert(0,["datetime", "dur", "src MAC/name", "hostname", "dst port", "proto", "sent", "recvd"])
-data.insert(1,["", "", "", "", "", "", "", ""])
-if args.aggregate:
+    if not data:
+        print("no records to show")
+        sys.exit(0)
     for i in range(len(data)):
-        data[i]=data[i][1:]
-print_table(data)
+        if data[i][1]==0:
+            data[i][1]="<1s"
+        else:
+            data[i][1]=str(data[i][1])+"s"
+        if data[i][3] and len(data[i][3])>40:
+            data[i][3]="..."+data[i][3][-40:]
+        data[i][6]=size_fmt(data[i][6])
+        data[i][7]=size_fmt(data[i][7])
+        data[i]=[str(c) for c in data[i]]
+    data.insert(0,["datetime", "dur", "src MAC/name", "hostname", "dst port", "proto", "sent", "recvd"])
+    data.insert(1,["", "", "", "", "", "", "", ""])
+    if args.aggregate:
+        for i in range(len(data)):
+            data[i]=data[i][1:]
+    print_table(data)
+
+
+if __name__ == '__main__':
+    main()

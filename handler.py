@@ -10,19 +10,35 @@ import subprocess
 import time
 
 
-#TODO: replace with uci bindings - once available
+# TODO: replace with uci bindings - once available
 def uci_get(opt):
     delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
+    child = subprocess.Popen(
+        ['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    )
+    out, err = child.communicate()
+    out = out.strip().decode('ascii', 'ignore')
     if out.find(delimiter) != -1:
         return out.split(delimiter)
     else:
         return out
 
-proto_ports = {'22/tcp': 'ssh', '80/tcp': 'http', '443/tcp': 'https', '53/tcp': 'dns', '53/udp': 'dns', '143/tcp': 'imap', '993/tcp': 'imaps', '587/tcp': 'smtp', '995/tcp': 'pop3s', '25/tcp': 'smtp', '465/tcp': 'smtps', '110/tcp': 'pop3'}
+
+proto_ports = {
+    '53/udp': 'dns',
+    '22/tcp': 'ssh',
+    '25/tcp': 'smtp',
+    '80/tcp': 'http',
+    '53/tcp': 'dns',
+    '110/tcp': 'pop3',
+    '143/tcp': 'imap',
+    '443/tcp': 'https',
+    '465/tcp': 'smtps',
+    '587/tcp': 'smtp',
+    '993/tcp': 'imaps',
+    '995/tcp': 'pop3s',
+}
 
 
 def load_names():
@@ -31,7 +47,7 @@ def load_names():
     while uci_get("dhcp.@host[{}].name".format(i)):
         mac = uci_get("dhcp.@host[{}].mac".format(i)).lower()
         name = uci_get("dhcp.@host[{}].name".format(i))
-        mac2name[mac]=name
+        mac2name[mac] = name
         i = i + 1
     return mac2name
 
@@ -46,38 +62,38 @@ def build_filter(query, name2mac):
         time_to = int(query["end"])
     else:
         time_to = int(now)
-    where_clause="start BETWEEN ? AND ?"
-    where_parameters=[time_from, time_to]
+    where_clause = "start BETWEEN ? AND ?"
+    where_parameters = [time_from, time_to]
     if "mac" in query:
         for i in range(len(query["mac"])):
             if query["mac"][i] in name2mac:
-                query["mac"][i]=name2mac[query["mac"][i]]
-            query["mac"][i]=query["mac"][i].lower()
-        fill=['?' for m in query["mac"]]
-        where_clause+=" AND src_mac IN ("+",".join(fill)+")"
-        where_parameters+=query["mac"]
+                query["mac"][i] = name2mac[query["mac"][i]]
+            query["mac"][i] = query["mac"][i].lower()
+        fill = ['?' for m in query["mac"]]
+        where_clause += " AND src_mac IN (" + ",".join(fill) + ")"
+        where_parameters += query["mac"]
     if "hostname" in query:
-        fill=['?' for m in query["hostname"]]
-        where_clause+=" AND hostname IN ("+",".join(fill)+")"
-        where_parameters+=query["hostname"]
+        fill = ['?' for m in query["hostname"]]
+        where_clause += " AND hostname IN (" + ",".join(fill) + ")"
+        where_parameters += query["hostname"]
     return (time_from, time_to, where_clause, where_parameters)
 
 
 def load_ignores():
-    ignored={}
+    ignored = {}
     try:
         for fn in glob.glob("/usr/share/pakon-light/domains_ignore/*.txt"):
             with open(fn) as f:
                 for line in f:
-                    if not line or line[0]=='#':
+                    if not line or line[0] == '#':
                         continue
-                    ignored[line.strip()]=1
+                    ignored[line.strip()] = 1
     except IOError:
         print("can't load domains_ignore file")
     return ignored
 
 
-ignored=load_ignores()
+ignored = load_ignores()
 
 
 def is_ignored(hostname):
@@ -85,11 +101,11 @@ def is_ignored(hostname):
         return False
     if hostname in ignored:
         return True
-    parts=hostname.split('.')
+    parts = hostname.split('.')
     while parts:
         if ".".join(parts) in ignored:
             return True
-        parts=parts[1:]
+        parts = parts[1:]
     return False
 
 
@@ -99,10 +115,13 @@ def get_data_from_live(con, where_clause, where_parameters, filter):
     # intervals. Just return it, don't write anything to permanent storage.
     c = con.cursor()
     flows = []
-    for row_mac in c.execute("SELECT DISTINCT src_mac FROM traffic WHERE flow_id IS NULL AND " + where_clause, where_parameters):
+    for row_mac in c.execute("SELECT DISTINCT src_mac FROM traffic WHERE flow_id IS NULL AND " + where_clause,
+                             where_parameters):
         src_mac = row_mac['src_mac']
         c2 = con.cursor()
-        for row_hostname in c2.execute("SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname FROM traffic WHERE src_mac = ? AND flow_id IS NULL AND " + where_clause, [src_mac,] + where_parameters):
+        for row_hostname in c2.execute(
+                "SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname FROM traffic WHERE src_mac = ? AND flow_id IS NULL AND " + where_clause,
+                [src_mac, ] + where_parameters):
             hostname = row_hostname['hostname']
             if filter and is_ignored(hostname):
                 continue
@@ -112,7 +131,9 @@ def get_data_from_live(con, where_clause, where_parameters, filter):
 
 def squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where_parameters):
     def add_flow(flow):
-        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'], flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'],
+                      flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+
     def merge_flows(flow1, flow2):
         if flow2['end'] > flow1['end']:
             flow1['end'] = flow2['end']
@@ -121,10 +142,13 @@ def squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where
         flow1['bytes_received'] += flow2['bytes_received']
         if flow1['app_proto'] != flow2['app_proto']:
             flow1['app_proto'] = ''
+
     c = con.cursor()
     flows = []
     current_flow = None
-    for row in c.execute("SELECT start, duration, (start+duration) AS end, src_mac, COALESCE(app_hostname,dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, bytes_send, bytes_received FROM traffic WHERE src_mac = ? AND COALESCE(app_hostname,dest_ip) = ? AND flow_id IS NULL AND " + where_clause + " ORDER BY start", [src_mac, hostname] + where_parameters):
+    for row in c.execute(
+            "SELECT start, duration, (start+duration) AS end, src_mac, COALESCE(app_hostname,dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, bytes_send, bytes_received FROM traffic WHERE src_mac = ? AND COALESCE(app_hostname,dest_ip) = ? AND flow_id IS NULL AND " + where_clause + " ORDER BY start",
+            [src_mac, hostname] + where_parameters):
         row = dict(row)
         row['start'] = float(row['start'])
         row['end'] = float(row['end'])
@@ -146,10 +170,14 @@ def squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where
 def get_data_from_archive(con, where_clause, where_parameters, filter):
     # get data from archive database - just sorted by time, nothing more special
     def add_flow(flow):
-        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'], flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'],
+                      flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+
     flows = []
     c = con.cursor()
-    for row in c.execute("SELECT start, duration, src_mac, COALESCE(app_hostname, dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, bytes_send, bytes_received FROM archive.traffic WHERE " + where_clause, where_parameters):
+    for row in c.execute(
+            "SELECT start, duration, src_mac, COALESCE(app_hostname, dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, bytes_send, bytes_received FROM archive.traffic WHERE " + where_clause,
+            where_parameters):
         if filter and is_ignored(row['hostname']):
             continue
         row = dict(row)
@@ -167,10 +195,14 @@ def get_aggregate_data_from_archive(con, where_clause, where_parameters, filter)
     # are non-overlapping. This means we can just sum durations, without taking any
     # special care for overlaps. Thus we can do the agregation with one SQL query.
     def add_flow(flow):
-        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'], flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+        flows.append([flow['start'], int(flow['duration']), flow['src_mac'], flow['hostname'], flow['dest_port'],
+                      flow['app_proto'], flow['bytes_send'], flow['bytes_received']])
+
     flows = []
     c = con.cursor()
-    for row in c.execute("SELECT start, SUM(duration) AS duration, src_mac, COALESCE(app_hostname, dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, SUM(bytes_send) AS bytes_send, SUM(bytes_received) AS bytes_received FROM archive.traffic WHERE " + where_clause + " GROUP BY src_mac, hostname, dest_port", where_parameters):
+    for row in c.execute(
+            "SELECT start, SUM(duration) AS duration, src_mac, COALESCE(app_hostname, dest_ip) AS hostname, (dest_port || '/' || lower(proto)) AS dest_port, app_proto, SUM(bytes_send) AS bytes_send, SUM(bytes_received) AS bytes_received FROM archive.traffic WHERE " + where_clause + " GROUP BY src_mac, hostname, dest_port",
+            where_parameters):
         if filter and is_ignored(row['hostname']):
             continue
         row = dict(row)
@@ -212,7 +244,7 @@ def query(query):
     except ValueError:
         con.close()
         return '[]'
-    (time_from, time_to, where_clause, where_parameters) = build_filter(query, {v:k for k,v in mac2name.items()})
+    (time_from, time_to, where_clause, where_parameters) = build_filter(query, {v: k for k, v in mac2name.items()})
     aggregate = query["aggregate"] if "aggregate" in query else False
     filter = query["filter"] if "filter" in query else True
     if aggregate:
@@ -227,11 +259,11 @@ def query(query):
         # just need to sort live data
         flows += sorted(get_data_from_live(con, where_clause, where_parameters, filter), key=lambda x: x[0])
     for flow in flows:
-        flow[0]=datetime.datetime.fromtimestamp(flow[0]).strftime('%Y-%m-%d %H:%M:%S')
+        flow[0] = datetime.datetime.fromtimestamp(flow[0]).strftime('%Y-%m-%d %H:%M:%S')
         if flow[2] in mac2name:
-            flow[2]=mac2name[flow[2]]
+            flow[2] = mac2name[flow[2]]
         if flow[4] in proto_ports:
-            flow[4]=proto_ports[flow[4]]
+            flow[4] = proto_ports[flow[4]]
     con.close()
     if aggregate:
         return json.dumps(flows[1:])
@@ -243,7 +275,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         with self.request.makefile() as f:
             data = f.readline().strip()
-        self.request.sendall((query(data)+"\n").encode())
+        self.request.sendall((query(data) + "\n").encode())
+
 
 def main():
     try:
@@ -254,6 +287,7 @@ def main():
     server.serve_forever()
     server.shutdown()
     server.server_close()
+
 
 if __name__ == "__main__":
     main()

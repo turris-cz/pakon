@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-import time
 import datetime
-import time
-import sqlite3
-import signal
-import errno
-import re
-import json
 import glob
-import subprocess
+import json
+import os
 import socketserver
+import sqlite3
+import subprocess
+import time
+
 
 #TODO: replace with uci bindings - once available
 def uci_get(opt):

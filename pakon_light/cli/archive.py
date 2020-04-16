@@ -5,6 +5,8 @@ import subprocess
 import sys
 import time
 
+from pakon_light.utils import uci_get
+
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 
@@ -61,19 +63,6 @@ def main():
     for i in range(len(rules) + 1):
         c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
         logging.info("{} flows remaining in archive on details level {}".format(c.fetchone()[0], i))
-
-
-# TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    child = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = child.communicate()
-    out = out.strip().decode('ascii', 'ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 
 def uci_get_time(opt, default=None):

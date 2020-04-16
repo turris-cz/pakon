@@ -1,6 +1,7 @@
 import os
 import sqlite3
-import subprocess
+
+from pakon_light.utils import uci_get
 
 
 def main():
@@ -29,19 +30,6 @@ def main():
     c.execute('PRAGMA user_version=1')
     con.commit()
     con.close()
-
-
-# TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    child = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = child.communicate()
-    out = out.strip().decode('ascii', 'ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 
 if __name__ == '__main__':

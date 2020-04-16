@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 
-import fileinput
-import json
-import socket
-import os, os.path
-import string
-import sys
-import subprocess
-import re
-import time
-import datetime
-import sqlite3
-import signal
-import errno
-import logging
-import glob
 import collections
-import queue
-import threading
-import gzip
 import ctypes
+import datetime
+import errno
+import glob
+import gzip
+import json
+import logging
+import os
+import os.path
+import re
+import signal
+import socket
+import sqlite3
+import subprocess
+import sys
+import threading
+import time
 from ctypes.util import find_library
+
 from cachetools import LRUCache, TTLCache, cached
 
 libc = ctypes.CDLL(find_library('c'))

@@ -2,14 +2,8 @@
 
 import os
 import sys
-import time
-import datetime
-import time
 import sqlite3
-import signal
-import errno
 import re
-import json
 import glob
 
 #TODO: remove duplicate code (shared with monitor.py). Maybe create a package?

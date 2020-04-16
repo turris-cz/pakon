@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 
-import os
+import argparse
+import datetime
+import json
+import re
+import socket
 import sys
 import time
-import datetime
-import time
-import signal
-import errno
-import re
-import json
-import subprocess
-import argparse
-import socket
+
 
 def print_table(table):
     col_width = [max(len(str(x)) for x in col) for col in zip(*table)]

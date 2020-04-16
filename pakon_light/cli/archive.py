@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import datetime
 import logging
 import sqlite3
@@ -12,11 +10,64 @@ logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
+def main():
+    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    con = sqlite3.connect(archive_path, isolation_level=None, timeout=30.0)
+    con.row_factory = sqlite3.Row
+    
+    con.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
+    start = 3600 * 24  # move flows from live DB to archive after 24hours
+    squash('live', 0, {"up_to": start, "window": 1, "size_threshold": 0})
+
+    # maximum number of records in the live database - to prevent filling all available space
+    # it's recommended not to touch this, unless you know really well what you're doing
+    # filling up all available space may break your router
+    hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+
+    c = con.cursor()
+    c.execute('SELECT COUNT(*) FROM live.traffic')
+    logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
+
+    # all changes in live database is done, backup it
+    con.execute('DETACH DATABASE live')
+    subprocess.call(["/usr/libexec/pakon-light/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
+
+    c.execute('SELECT COUNT(*) FROM traffic')
+    count = int(c.fetchone()[0])
+    if count > hard_limit:
+        logging.warning('over {} records in the archive database ({}) -> deleting', hard_limit, count)
+        con.execute(
+            'DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)',
+            hard_limit)
+
+    rules = load_archive_rules()
+
+    # if the rules changed (there is detail level that can't be generated using current rules)
+    # reset everything to detail level 0 -> perform the whole archivation again
+    c.execute('SELECT DISTINCT(details) FROM traffic WHERE details > ?', (len(rules),))
+    if c.fetchall():
+        logging.info('resetting all detail levels to 0')
+        c.execute('UPDATE traffic SET details = 0')
+
+    for i in range(len(rules)):
+        squash(i, i + 1, rules[i])
+    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
+
+    # c.execute('VACUUM')
+    # performing it every time is bad - it causes the whole database file to be rewritten
+    # TODO: think about when to do it, perform it once in a while?
+
+    for i in range(len(rules) + 1):
+        c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
+        logging.info("{} flows remaining in archive on details level {}".format(c.fetchone()[0], i))
+
+
 # TODO: replace with uci bindings - once available
 def uci_get(opt):
     delimiter = '__uci__delimiter__'
     child = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = child.communicate()
     out = out.strip().decode('ascii', 'ignore')
     if out.find(delimiter) != -1:
@@ -41,11 +92,6 @@ def uci_get_time(opt, default=None):
     else:
         ret = int(text)
     return ret
-
-
-archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
-con = sqlite3.connect(archive_path, isolation_level=None, timeout=30.0)
-con.row_factory = sqlite3.Row
 
 
 def squash(from_details, to_details, rules):
@@ -165,48 +211,5 @@ def load_archive_rules():
     return rules
 
 
-con.execute('ATTACH DATABASE "/var/lib/pakon.db" AS live')
-start = 3600 * 24  # move flows from live DB to archive after 24hours
-squash('live', 0, {"up_to": start, "window": 1, "size_threshold": 0})
-
-# maximum number of records in the live database - to prevent filling all available space
-# it's recommended not to touch this, unless you know really well what you're doing
-# filling up all available space may break your router
-hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
-
-c = con.cursor()
-c.execute('SELECT COUNT(*) FROM live.traffic')
-logging.info("{} flows remaining in live database".format(c.fetchone()[0]))
-
-# all changes in live database is done, backup it
-con.execute('DETACH DATABASE live')
-subprocess.call(["/usr/libexec/pakon-light/backup_sqlite.sh", "/var/lib/pakon.db", "/srv/pakon/pakon.db.xz"])
-
-c.execute('SELECT COUNT(*) FROM traffic')
-count = int(c.fetchone()[0])
-if count > hard_limit:
-    logging.warning('over {} records in the archive database ({}) -> deleting', hard_limit, count)
-    con.execute('DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)',
-                hard_limit)
-
-rules = load_archive_rules()
-
-# if the rules changed (there is detail level that can't be generated using current rules)
-# reset everything to detail level 0 -> perform the whole archivation again
-c.execute('SELECT DISTINCT(details) FROM traffic WHERE details > ?', (len(rules),))
-if c.fetchall():
-    logging.info('resetting all detail levels to 0')
-    c.execute('UPDATE traffic SET details = 0')
-
-for i in range(len(rules)):
-    squash(i, i + 1, rules[i])
-now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
-
-# c.execute('VACUUM')
-# performing it every time is bad - it causes the whole database file to be rewritten
-# TODO: think about when to do it, perform it once in a while?
-
-for i in range(len(rules) + 1):
-    c.execute('SELECT COUNT(*) FROM traffic WHERE details = ?', (i,))
-    logging.info("{} flows remaining in archive on details level {}".format(c.fetchone()[0], i))
+if __name__ == '__main__':
+    main()

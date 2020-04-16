@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import datetime
 import glob
 import json
@@ -10,7 +8,22 @@ import subprocess
 import time
 
 
+def main():
+    try:
+        os.unlink("/var/run/pakon-query.sock")
+    except OSError:
+        pass
+    server = socketserver.UnixStreamServer("/var/run/pakon-query.sock", ThreadedTCPRequestHandler)
+    server.serve_forever()
+    server.shutdown()
+    server.server_close()
+
+
+
+
 # TODO: replace with uci bindings - once available
+
+
 def uci_get(opt):
     delimiter = '__uci__delimiter__'
     child = subprocess.Popen(
@@ -276,17 +289,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         with self.request.makefile() as f:
             data = f.readline().strip()
         self.request.sendall((query(data) + "\n").encode())
-
-
-def main():
-    try:
-        os.unlink("/var/run/pakon-query.sock")
-    except OSError:
-        pass
-    server = socketserver.UnixStreamServer("/var/run/pakon-query.sock", ThreadedTCPRequestHandler)
-    server.serve_forever()
-    server.shutdown()
-    server.server_close()
 
 
 if __name__ == "__main__":

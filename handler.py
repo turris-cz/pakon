@@ -76,7 +76,7 @@ def build_filter(query, name2mac):
         fill = ['?' for m in query["hostname"]]
         where_clause += " AND hostname IN (" + ",".join(fill) + ")"
         where_parameters += query["hostname"]
-    return (time_from, time_to, where_clause, where_parameters)
+    return time_from, time_to, where_clause, where_parameters
 
 
 def load_ignores():

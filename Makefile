@@ -43,4 +43,4 @@ run-create-db: venv
 
 clean:
 	find . -name '*.pyc' -exec rm --force {} +
-	rm -rf $(VENV_NAME) *.eggs *.egg-info dist build docs/_build .cache
+	rm -rf $(VENV_NAME) *.eggs *.egg-info dist build docs/_build .cache tmp

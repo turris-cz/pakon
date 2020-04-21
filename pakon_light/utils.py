@@ -5,15 +5,20 @@
 
 import subprocess
 
+UCI_DELIMITER = '__uci__delimiter__'
+
 
 # TODO: replace with uci bindings - once available
 def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    child = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    child = subprocess.Popen(
+        ['/sbin/uci', '-d', UCI_DELIMITER, '-q', 'get', opt],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE
+    )
+
     out, err = child.communicate()
     out = out.strip().decode('ascii', 'ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
+    if out.find(UCI_DELIMITER) != -1:
+        return out.split(UCI_DELIMITER)
     else:
         return out

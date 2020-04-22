@@ -39,17 +39,14 @@ LOGGING = {
         }
     },
     'loggers': {
-        # We want only our debug or info messages. Other libraries
-        # do a lot of logging as well, for example module sh, but
-        # it's a lot of data we don't care about.
         'pakon-light': {
             'level': 'DEBUG',
-            'handlers': ['console' if DEV else 'file'],
+            'handlers': ['file'],
             'propagate': False,
         },
         '': {
             'level': 'WARNING',
-            'handlers': ['console' if DEV else 'file'],
+            'handlers': ['file'],
             'propagate': False,
         },
     },

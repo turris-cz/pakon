@@ -34,8 +34,8 @@ class UnixSocketSource(Source):
             self.client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             self.client.bind("/var/run/pakon.sock")
         except OSError as e:
-            settings.logging.error("Can't read socket")
-            settings.logging.error(e)
+            settings.logger.error("Can't read socket")
+            settings.logger.error(e)
             sys.exit(1)
 
     def get_message(self):
@@ -53,8 +53,8 @@ class ConntrackScriptSource(Source):
                 ["/usr/bin/python3", "/usr/libexec/suricata_conntrack_flows.py", "/var/run/pakon.sock"], shell=False,
                 stdout=subprocess.PIPE, stderr=self.devnull, preexec_fn=set_death_signal)
         except OSError as e:
-            settings.logging.error("Can't run flows_conntrack.py")
-            settings.logging.error(e)
+            settings.logger.error("Can't run flows_conntrack.py")
+            settings.logger.error(e)
             sys.exit(1)
 
     def get_message(self):

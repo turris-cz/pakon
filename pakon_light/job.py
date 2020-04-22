@@ -15,8 +15,9 @@ class Job(ABC):
         """
         Method to be called to start the job.
         """
-        self.config_logging()
         args = self.parse_args()
+        self.config_logging(debug=args.debug)
+
         try:
             settings.logger.info('%s is starting', self.job_name)
             self.main(args)
@@ -28,9 +29,13 @@ class Job(ABC):
             settings.logger.exception('%s was ended with an exception', self.job_name)
             exit(3)
 
-    def config_logging(self):
-        if not settings.DEV:
+    def config_logging(self, debug):
+        if not settings.DEV and not debug:
             settings.LOGGING['handlers']['file']['filename'] = f'{settings.LOGGING_PATH}{self.job_name}.log'
+        else:
+            settings.LOGGING['loggers']['']['handlers'] = ['console']
+            settings.LOGGING['loggers']['pakon-light']['handlers'] = ['console']
+
         logging.config.dictConfig(settings.LOGGING)
 
     def parse_args(self):
@@ -42,6 +47,8 @@ class Job(ABC):
         more arguments to your job, override `parse_args_arguments` instead.
         """
         parser = argparse.ArgumentParser()
+        parser.add_argument('-d', '--debug', action='store_true')
+
         self.parse_args_arguments(parser)
         return parser
 

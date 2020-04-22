@@ -206,5 +206,5 @@ def exit_gracefully(con, data_source, dns_cache):
 
 
 def reload_replaces(domain_replace):
-    logging.info("reloading domain replaces")
+    settings.logger.info("reloading domain replaces")
     domain_replace.setup(load_replaces())

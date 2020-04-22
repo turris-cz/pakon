@@ -39,7 +39,10 @@ lint: venv
 	${PYTHON} -m pylint --rcfile=pylintrc pakon_light
 
 run-create-db: venv
-	${PYTHON} pakon_light/cli/create_db.py
+	${PYTHON} -m pakon_light.cli.create_db
+
+run-monitor: venv
+	${PYTHON} -m pakon_light.cli.monitor
 
 clean:
 	find . -name '*.pyc' -exec rm --force {} +

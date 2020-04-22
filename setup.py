@@ -41,6 +41,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'pakon-create-db = pakon_light.cli:create_db',
+            'pakon-monitor = pakon_light.cli:monitor',
             'pakon-archive = pakon_light.cli:archive',
         ],
     },

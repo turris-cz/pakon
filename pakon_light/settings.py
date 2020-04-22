@@ -5,10 +5,17 @@
 
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger('pakon-light')
 
 DEV = os.environ.get('ENV') == 'dev'
+
+ROOT_PATH = Path('./tmp') if DEV else Path('/')
+DB_DIR = ROOT_PATH / 'var/lib/'
+DB_PATH = DB_DIR / 'pakon.db'
+ARCHIVE_DB_DIR = ROOT_PATH / 'srv/pakon'
+ARCHIVE_DB_PATH = ARCHIVE_DB_DIR / 'pakon-archive.db'
 
 LOGGING_PATH = '/tmp/pakon-light.log'
 

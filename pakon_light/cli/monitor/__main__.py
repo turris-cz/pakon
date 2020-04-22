@@ -16,6 +16,7 @@ import sqlite3
 
 from pakon_light import settings
 from pakon_light.job import Job
+from pakon_light.settings import ARCHIVE_DB_PATH, DB_PATH
 from pakon_light.utils import uci_get
 
 from .dns_cache import DNSCache
@@ -24,14 +25,10 @@ from .utils import (
     MultiReplace,
     everyN,
     exit_gracefully,
-    handle_dns,
-    handle_flow,
-    handle_flow_start,
-    handle_http,
-    handle_tls,
     load_replaces,
     reload_replaces
 )
+from pakon_light.cli.monitor.handlers import handle_dns, handle_flow, handle_tls, handle_http, handle_flow_start
 
 
 def main():
@@ -44,11 +41,11 @@ class MonitorJob(Job):
         domain_replace = MultiReplace(load_replaces())
         known_devices = set()
 
-        archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+        archive_path = uci_get('pakon.archive.path') or ARCHIVE_DB_PATH
 
         dns_cache.try_load()
         # isolation_level=None for autocommit mode - we dont want long-lasting transactions
-        con = sqlite3.connect('/var/lib/pakon.db', isolation_level=None)
+        con = sqlite3.connect(DB_PATH, isolation_level=None)
         # flow_ids are only unique (and meaningful) during one run of this script
         # flows with flow_id are incomplete, delete them
         try:

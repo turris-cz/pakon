@@ -4,23 +4,14 @@
 #  See /LICENSE for more information.
 
 import os
-from pathlib import Path
 
 from pakon_light import settings
 from pakon_light.job import Job
 
 from pakon_light.models import Traffic, TrafficArchive
-from pakon_light.settings import DEV
+from pakon_light.settings import DEV, DB_PATH, ARCHIVE_DB_PATH
 from pakon_light.utils import uci_get
 from sqlalchemy import create_engine
-
-ROOT_PATH = Path('./tmp') if DEV else Path('/')
-
-DB_DIR = ROOT_PATH / 'var/lib/'
-DB_PATH = DB_DIR / 'pakon.db'
-
-ARCHIVE_DB_DIR = ROOT_PATH / 'srv/pakon'
-ARCHIVE_DB_PATH = ARCHIVE_DB_DIR / 'pakon-archive.db'
 
 
 def main():

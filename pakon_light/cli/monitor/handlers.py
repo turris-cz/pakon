@@ -2,11 +2,11 @@
 #
 #   This is free software, licensed under the GNU General Public License v3.
 #   See /LICENSE for more information.
+
 import datetime
 import logging
 import re
 import subprocess
-import threading
 import time
 
 from cachetools import cached, TTLCache
@@ -61,7 +61,7 @@ def handle_http(data, con, domain_replace):
                 (domain_replace.replace(data['http']['hostname']), data['flow_id']))
 
 
-def handle_flow_start(data, notify_new_devices, con, allowed_interfaces, known_devices, dns_cache, domain_replace):
+def handle_flow_start(data, con, allowed_interfaces, dns_cache, domain_replace):
     dev, mac = get_dev_mac(data['src_ip'])
     if data['proto'] not in ['TCP', 'UDP']:
         return
@@ -72,9 +72,6 @@ def handle_flow_start(data, notify_new_devices, con, allowed_interfaces, known_d
     if dev not in allowed_interfaces:
         logging.debug("This flow is not from allowed interface")
         return
-    if notify_new_devices and mac not in known_devices:
-        known_devices.add(mac)
-        new_device_notify(mac, dev)
     hostname = dns_cache.get(mac, data['dest_ip'])
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
@@ -113,17 +110,3 @@ def timestamp2unixtime(timestamp):
     dt = datetime.datetime.strptime(timestamp[:-5], '%Y-%m-%dT%H:%M:%S.%f')
     timestamp = float(time.mktime(dt.timetuple())) + float(dt.microsecond) / 1000000
     return timestamp
-
-
-def new_device_notify(mac, iface):
-    def new_device_notify_thread(mac, iface):
-        time.sleep(5)
-        try:
-            cmd = ["/usr/libexec/pakon-light/notify_new_device.sh", mac, iface]
-            subprocess.call([arg.encode('utf-8') for arg in cmd])
-        except OSError:
-            logging.error("failed to create notification")
-
-    thread = threading.Thread(target=new_device_notify_thread, args=(mac, iface,))
-    thread.daemon = True
-    thread.start()

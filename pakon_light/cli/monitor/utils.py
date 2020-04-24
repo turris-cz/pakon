@@ -42,10 +42,10 @@ class MultiReplace:
      The whole string is then replaced (the replacement is specified by adict).
     """
 
-    def __init__(self, adict={}):
-        self.setup(adict)
+    def __init__(self, adict):
+        if not adict:
+            adict = {}
 
-    def setup(self, adict):
         self.adict = adict
         self.rx = re.compile("^.*(" + '|'.join(map(re.escape, adict)) + ").*$")
 
@@ -71,20 +71,6 @@ def load_replaces():
                         continue
                     adict[match.group(1)] = match.group(2)
     except IOError as e:
-        print("can't load domains_services file")
-        print(e)
+        settings.logger.exception("Can't load domains_services file.")
     return adict
 
-
-def exit_gracefully(con, data_source, dns_cache):
-    data_source.close()
-    if con:
-        con.commit()
-        con.close()
-    dns_cache.dump()
-    sys.exit(0)
-
-
-def reload_replaces(domain_replace):
-    settings.logger.info("reloading domain replaces")
-    domain_replace.setup(load_replaces())

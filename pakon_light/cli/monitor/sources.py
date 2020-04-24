@@ -7,13 +7,14 @@ import os
 import socket
 import subprocess
 import sys
+from abc import ABC
 
 from pakon_light import settings
 
 from .utils import set_death_signal
 
 
-class Source:
+class Source(ABC):
     def __init__(self):
         pass
 

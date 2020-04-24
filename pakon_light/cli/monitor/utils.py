@@ -35,10 +35,12 @@ class everyN:
 
 
 class MultiReplace:
-    "perform replacements specified by regex and adict all at once"
-    " The regex is constructed such that it matches the whole string (.* in the beginnin and end),"
-    " the actual key from adict is the first group of match (ignoring possible prefix and suffix)."
-    " The whole string is then replaced (the replacement is specified by adict)"
+    """
+     Perform replacements specified by regex and adict all at once.
+     The regex is constructed such that it matches the whole string (.* in the beginnin and end),
+     the actual key from adict is the first group of match (ignoring possible prefix and suffix).
+     The whole string is then replaced (the replacement is specified by adict).
+    """
 
     def __init__(self, adict={}):
         self.setup(adict)

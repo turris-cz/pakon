@@ -20,48 +20,61 @@ def handle_dns(data, dns_cache):
         dns_cache.set(mac, data['dns']['rrname'], data['dns']['rdata'])
 
 
-def handle_flow(data, con):
+def handle_flow(data, traffic):
     if data['proto'] not in ['TCP', 'UDP']:
         return
     if 'app_proto' not in data.keys() or data['app_proto'] == 'failed':
         data['app_proto'] = '?'
+
     if data['app_proto'] == 'dns' or int(data['flow']['bytes_toserver']) == 0 or int(
             data['flow']['bytes_toclient']) == 0:
-        con.execute('DELETE FROM traffic WHERE flow_id = ?', (data['flow_id'],))
+        return traffic.delete().where(traffic.c.flow_id == data['flow_id'])
     else:
-        con.execute(
-            'UPDATE traffic SET duration = ?, app_proto = ?, bytes_send = ?, bytes_received = ?, flow_id = NULL WHERE flow_id = ?',
-            (
-                int(timestamp2unixtime(data['flow']['end']) - timestamp2unixtime(data['flow']['start'])),
-                data['app_proto'],
-                data['flow']['bytes_toserver'], data['flow']['bytes_toclient'], data['flow_id']
-            )
+        return traffic.update().values(
+            duration=int(timestamp2unixtime(data['flow']['end']) - timestamp2unixtime(data['flow']['start'])),
+            app_proto=data['app_proto'],
+            bytes_send=data['flow']['bytes_toserver'],
+            bytes_received=data['flow']['bytes_toclient'],
+            flow_id=None,
+        ).where(
+            traffic.c.flow_id == data['flow_id']
         )
 
 
-def handle_tls(data, con, domain_replace):
+def handle_tls(data, domain_replace, traffic):
     hostname = ''
     if 'sni' in data['tls'].keys():
         hostname = data['tls']['sni']
     elif 'subject' in data['tls'].keys():
-        # get only CN from suject
-        m = re.search('(?<=CN=)[^,]*', data['tls']['subject'])
-        if m:
-            hostname = m.group(0)
+        # get only CN from subject
+        match = re.search('(?<=CN=)[^,]*', data['tls']['subject'])
+        if match:
+            hostname = match.group(0)
+
     if not hostname:
         return
-    con.execute('UPDATE traffic SET app_hostname = ?, app_proto = "tls" WHERE flow_id = ?',
-                (domain_replace.replace(hostname), data['flow_id']))
+
+    return traffic.update().values(
+        app_hostname=domain_replace.replace(hostname),
+        app_proto="tls",
+    ).where(
+        traffic.c.flow_id == data['flow_id']
+    )
 
 
-def handle_http(data, con, domain_replace):
+def handle_http(data, domain_replace, traffic):
     if 'hostname' not in data['http'].keys():
         return
-    con.execute('UPDATE traffic SET app_hostname = ?, app_proto = "http" WHERE flow_id = ?',
-                (domain_replace.replace(data['http']['hostname']), data['flow_id']))
+
+    return traffic.update().values(
+        app_hostname=domain_replace.replace(data['http']['hostname']),
+        app_proto="http",
+    ).where(
+        traffic.c.flow_id == data['flow_id']
+    )
 
 
-def handle_flow_start(data, con, allowed_interfaces, dns_cache, domain_replace):
+def handle_flow_start(data, allowed_interfaces, dns_cache, domain_replace, traffic):
     dev, mac = get_dev_mac(data['src_ip'])
     if data['proto'] not in ['TCP', 'UDP']:
         return
@@ -76,13 +89,18 @@ def handle_flow_start(data, con, allowed_interfaces, dns_cache, domain_replace):
     if hostname:
         logging.debug('Got hostname from cached DNS: {}'.format(hostname))
         hostname = domain_replace.replace(hostname.lower())
-    con.execute(
-        'INSERT INTO traffic (flow_id, start, src_mac, src_ip, src_port, dest_ip, dest_port, proto, app_proto, app_hostname) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (
-            data['flow_id'], timestamp2unixtime(data['flow']['start']), mac, data['src_ip'], data['src_port'],
-            data['dest_ip'], data['dest_port'],
-            data['proto'], data['app_proto'], hostname
-        )
+
+    return traffic.insert().values(
+        flow_id=data['flow_id'],
+        start=timestamp2unixtime(data['flow']['start']),
+        src_mac=mac,
+        src_ip=data['src_ip'],
+        src_port=data['src_port'],
+        dest_ip=data['dest_ip'],
+        dest_port=data['dest_port'],
+        proto=data['proto'],
+        app_proto=data['app_proto'],
+        app_hostname=hostname,
     )
 
 

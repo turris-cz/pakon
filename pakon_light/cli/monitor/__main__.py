@@ -15,6 +15,7 @@ import signal
 import sqlite3
 
 from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy.exc import ObjectNotExecutableError
 
 from pakon_light import settings
 from pakon_light.job import Job
@@ -90,26 +91,31 @@ class MonitorJob(Job):
                 if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
                     data['ether'] = {}
                     data['ether']['src'] = ''
-                # if data['event_type'] == 'dns' and data['dns']:
-                #     handle_dns(data, dns_cache)
-                # elif data['event_type'] == 'flow' and data['flow']:
-                #     handle_flow(data, con)
-                # elif data['event_type'] == 'tls' and data['tls']:
-                #     handle_tls(data, con, domain_replace)
-                # elif data['event_type'] == 'http' and data['http']:
-                #     handle_http(data, con, domain_replace)
-                # elif data['event_type'] == 'flow_start' and data['flow']:
-                #     handle_flow_start(
-                #         data,
-                #         notify_new_devices,
-                #         con,
-                #         allowed_interfaces,
-                #         known_devices,
-                #         dns_cache,
-                #         domain_replace
-                #     )
-                # else:
-                #     settings.logger.warning("Unknown event type")
+
+                operation = None
+                if data['event_type'] == 'dns' and data['dns']:
+                    operation = handle_dns(data, dns_cache)
+                elif data['event_type'] == 'flow' and data['flow']:
+                    operation = handle_flow(data, traffic)
+                elif data['event_type'] == 'tls' and data['tls']:
+                    operation = handle_tls(data, domain_replace, traffic)
+                elif data['event_type'] == 'http' and data['http']:
+                    operation = handle_http(data, domain_replace, traffic)
+                elif data['event_type'] == 'flow_start' and data['flow']:
+                    operation = handle_flow_start(
+                        data,
+                        allowed_interfaces,
+                        dns_cache,
+                        domain_replace,
+                        traffic
+                    )
+                else:
+                    settings.logger.warning("Unknown event type")
+
+                try:
+                    connection.execute(operation)
+                except ObjectNotExecutableError:
+                    pass
 
                 # if run_check:
                 #     c = con.cursor()

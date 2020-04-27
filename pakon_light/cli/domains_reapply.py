@@ -6,50 +6,8 @@
 import os
 import sys
 import sqlite3
-import re
-import glob
 
-
-# TODO: remove duplicate code (shared with monitor.py). Maybe create a package?
-class MultiReplace:
-    """
-     Performs replacements specified by regex and adict all at once
-     The regex is constructed such that it matches the whole string (.* in the beginning and end),
-     the actual key from adict is the first group of match (ignoring possible prefix and suffix).
-     The whole string is then replaced (the replacement is specified by adict)
-    """
-
-    def __init__(self, adict):
-        self.setup(adict)
-
-    def setup(self, adict):
-        self.adict = adict
-        self.rx = re.compile("^.*(" + '|'.join(map(re.escape, adict)) + ").*$")
-
-    def replace(self, text):
-        def one_xlat(match):
-            return self.adict[match.group(1)]
-
-        return self.rx.sub(one_xlat, text)
-
-
-def load_replaces():
-    adict = {}
-    try:
-        for fn in glob.glob("/usr/share/pakon-light/domains_replace/*.conf"):
-            with open(fn) as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    match = re.match('"([^"]+)"\s*:\s*"([^"]+)"', line)
-                    if not match:
-                        print("invalid line: " + line)
-                        continue
-                    adict[match.group(1)] = match.group(2)
-    except IOError:
-        print("can't load domains_services file")
-    return adict
+from pakon_light.utils import load_replaces, MultiReplace
 
 
 def replace(db, multiple_replace):

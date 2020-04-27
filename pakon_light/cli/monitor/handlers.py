@@ -14,7 +14,8 @@ from cachetools import cached, TTLCache
 
 def handle_dns(data, dns_cache):
     if data['dns']['type'] == 'answer' and 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in (
-            'A', 'AAAA', 'CNAME'):
+            'A', 'AAAA', 'CNAME'
+    ):
         logging.debug('Saving DNS data')
         dev, mac = get_dev_mac(data['dest_ip'])
         dns_cache.set(mac, data['dns']['rrname'], data['dns']['rdata'])

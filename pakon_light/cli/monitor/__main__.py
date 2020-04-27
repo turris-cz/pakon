@@ -13,12 +13,12 @@ from sqlalchemy.exc import ObjectNotExecutableError
 from pakon_light import settings
 from pakon_light.job import Job
 from pakon_light.settings import DB_PATH
-from pakon_light.utils import uci_get
+from pakon_light.utils import uci_get, MultiReplace, load_replaces
 
 from .dns_cache import DNSCache
 from .handlers import handle_dns, handle_flow, handle_flow_start, handle_http, handle_tls
 from .sources import ConntrackScriptSource, UnixSocketSource
-from .utils import MultiReplace, everyN, load_replaces
+from .utils import everyN
 
 # Maximum number of records in the live database - to prevent filling all available space
 # it's recommended not to touch this, unless you know really well what you're doing

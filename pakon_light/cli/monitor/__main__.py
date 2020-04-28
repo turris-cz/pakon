@@ -7,22 +7,21 @@ import errno
 import json
 import signal
 
-from sqlalchemy import MetaData, create_engine, desc, select
-from sqlalchemy.exc import ObjectNotExecutableError
-
 from pakon_light import settings
-from pakon_light.job import Job
-from pakon_light.settings import DB_PATH
-from pakon_light.utils import uci_get, MultiReplace, load_replaces
+from pakon_light.job import PakonJob
+from pakon_light.models.traffic import Traffic
+from pakon_light.utils import MultiReplace, load_replaces, uci_get
+from sqlalchemy import desc, select
 
 from .dns_cache import DNSCache
-from .handlers import handle_dns, handle_flow, handle_flow_start, handle_http, handle_tls
+from .handlers import handle_flow, handle_flow_start, handle_http, handle_tls
 from .sources import ConntrackScriptSource, UnixSocketSource
-from .utils import everyN
+from .utils import everyN, get_dev_mac, is_flow_to_delete
 
-# Maximum number of records in the live database - to prevent filling all available space
-# it's recommended not to touch this, unless you know really well what you're doing
-# filling all available space in /var/lib (tmpfs) will probably break your router.
+# Maximum number of records in the live database - to prevent filling all available space it's recommended not to touch
+# this, unless you know really well what you're doing filling all available space in /var/lib (tmpfs) will probably
+# break your router.
+
 HARD_LIMIT = 3000000
 
 CHECK_DB_OVERFLOW_EVERY = 100000
@@ -32,27 +31,15 @@ def main():
     MonitorJob().run()
 
 
-class MonitorJob(Job):
+class MonitorJob(PakonJob):
     def __init__(self):
+        super().__init__(with_live_db=True, with_archive_db=False)
         self.dns_cache = DNSCache()
         self.domain_replace = MultiReplace(load_replaces())
         self.dns_cache.try_load()
-        self.setup_db()
-        self.connection, self.traffic = self.setup_db()
         self.data_source = self.get_data_source()
         self.allowed_interfaces = uci_get('pakon.monitor.interface')
         self.hard_limit = int(uci_get('pakon.monitor.database_limit') or HARD_LIMIT)
-
-    @staticmethod
-    def setup_db():
-        db_engine = create_engine(f'sqlite:///{DB_PATH}', echo=True)
-        connection = db_engine.connect()
-
-        meta = MetaData(db_engine)
-        meta.reflect(bind=db_engine)
-        traffic = meta.tables['traffic']
-
-        return connection, traffic
 
     @staticmethod
     def get_data_source():
@@ -67,16 +54,13 @@ class MonitorJob(Job):
 
     def clear_records_with_flow_id(self):
         """
-        flow_ids are only unique (and meaningful) during one run of this script
-        flows with flow_id are incomplete, delete them.
+        flow_ids are only unique (and meaningful) during one run of this script flows with flow_id are incomplete,
+        delete them.
         """
-        traffic = self.traffic
-        connection = self.connection
-
         settings.logger.info('Clear records with flow_id.')
-        delete_empty_flow_id = traffic.delete().where(traffic.c.flow_id.isnot(None))
-        connection.execute(delete_empty_flow_id)
-        settings.logger.info('Records with flow_id cleared.')
+        deleted_traffic_count = self.live_db_session.query(Traffic).filter(Traffic.flow_id.isnot(None)).delete()
+        self.live_db_session.commit()
+        settings.logger.info('%s records with flow_id cleared.', deleted_traffic_count)
 
     def set_signal_handlers(self):
         signal.signal(signal.SIGUSR1, self.reload_replaces)
@@ -105,36 +89,61 @@ class MonitorJob(Job):
                     data['ether'] = {}
                     data['ether']['src'] = ''
 
-                operation = self.handle_data(data)
-                try:
-                    self.connection.execute(operation)
-                except ObjectNotExecutableError:
-                    pass
+                if data['event_type'] == 'flow_start' and data['flow']:
+                    self.handle_new_traffic(data)
+                elif data['event_type'] == 'dns' and data['dns']:
+                    self.handle_dns(data)
+                else:
+                    self.handle_update_traffic(data)
 
                 if run_check:
                     self.check_and_solve_db_overflow()
 
-            except KeyboardInterrupt:
-                self.close_db_connection()
+            except KeyboardInterrupt as e:
                 self.dns_cache.dump()
+                settings.logger.info('DNS cache dumped.')
+                raise e
 
             except IOError as e:
                 if e.errno != errno.EINTR:
                     raise
 
-    def handle_data(self, data):
-        if data['event_type'] == 'dns' and data['dns']:
-            return handle_dns(data, self.dns_cache)
-        elif data['event_type'] == 'flow' and data['flow']:
-            return handle_flow(data, self.traffic)
+    def handle_new_traffic(self, data):
+        traffic = handle_flow_start(data, self.allowed_interfaces, self.dns_cache, self.domain_replace)
+        if traffic:
+            self.live_db_session.add(traffic)
+            self.live_db_session.commit()
+
+    def handle_dns(self, data):
+        is_answer = data['dns']['type'] == 'answer'
+        check_rrtype = 'rrtype' in data['dns'].keys() and data['dns']['rrtype'] in ('A', 'AAAA', 'CNAME')
+
+        if is_answer and check_rrtype:
+            settings.logging.debug('Saving DNS data')
+            dev, mac = get_dev_mac(data['dest_ip'])
+            self.dns_cache.set(mac, data['dns']['rrname'], data['dns']['rdata'])
+
+    def handle_update_traffic(self, data):
+        traffic_values = None
+        flow_id = data['flow_id']
+        if data['event_type'] == 'flow' and data['flow']:
+            if 'app_proto' not in data or data['app_proto'] == 'failed':
+                data['app_proto'] = '?'
+            if is_flow_to_delete(data):
+                self.live_db_session.query(Traffic).filter(Traffic.flow_id == flow_id).delete()
+                return None
+            else:
+                traffic_values = handle_flow(data)
         elif data['event_type'] == 'tls' and data['tls']:
-            return handle_tls(data, self.domain_replace, self.traffic)
+            traffic_values = handle_tls(data, self.domain_replace)
         elif data['event_type'] == 'http' and data['http']:
-            return handle_http(data, self.domain_replace, self.traffic)
-        elif data['event_type'] == 'flow_start' and data['flow']:
-            return handle_flow_start(data, self.allowed_interfaces, self.dns_cache, self.domain_replace, self.traffic)
+            traffic_values = handle_http(data, self.domain_replace)
         else:
             settings.logger.warning("Unknown event type.")
+
+        if traffic_values:
+            self.live_db_session.query(Traffic).filter(Traffic.flow_id == flow_id).update(traffic_values)
+            self.live_db_session.commit()
 
     def check_and_solve_db_overflow(self):
         traffic = self.traffic

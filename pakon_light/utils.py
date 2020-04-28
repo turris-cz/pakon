@@ -2,9 +2,9 @@
 #
 #  This is free software, licensed under the GNU General Public License v3.
 #  See /LICENSE for more information.
+
 import glob
 import re
-
 import subprocess
 
 from pakon_light import settings
@@ -59,7 +59,7 @@ def load_replaces():
                     line = line.strip()
                     if not line:
                         continue
-                    match = re.match('"([^"]+)"\s*:\s*"([^"]+)"', line)
+                    match = re.match(r'"([^"]+)"\s*:\s*"([^"]+)"', line)
                     if not match:
                         print("invalid line: " + line)
                         continue

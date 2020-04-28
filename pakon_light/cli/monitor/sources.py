@@ -7,7 +7,7 @@ import os
 import socket
 import subprocess
 import sys
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from pakon_light import settings
 
@@ -15,12 +15,11 @@ from .utils import set_death_signal
 
 
 class Source(ABC):
-    def __init__(self):
-        pass
-
+    @abstractmethod
     def get_message(self):
         pass
 
+    @abstractmethod
     def close(self):
         pass
 

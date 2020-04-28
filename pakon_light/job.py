@@ -5,9 +5,17 @@
 
 import argparse
 import logging.config
+import os
 from abc import ABC, abstractmethod
 
-from pakon_light import settings
+from pakon_light.utils import uci_get
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from .models.traffic import Traffic
+from .models.traffic_archive import TrafficArchive
+
+from .settings import ARCHIVE_DB_PATH, DB_PATH, logger, LOGGING, DEV, LOGGING_PATH
 
 
 class Job(ABC):
@@ -19,24 +27,24 @@ class Job(ABC):
         self.config_logging(debug=args.debug)
 
         try:
-            settings.logger.info('%s is starting', self.job_name)
+            logger.info('%s is starting', self.job_name)
             self.main(args)
-            settings.logger.info('%s finished', self.job_name)
+            logger.info('%s finished', self.job_name)
         except KeyboardInterrupt:
-            settings.logger.info('%s was aborted', self.job_name)
+            logger.info('%s was aborted', self.job_name)
             exit(2)
         except Exception:  # pylint: disable=broad-except
-            settings.logger.exception('%s was ended with an exception', self.job_name)
+            logger.exception('%s was ended with an exception', self.job_name)
             exit(3)
 
     def config_logging(self, debug):
-        if not settings.DEV and not debug:
-            settings.LOGGING['handlers']['file']['filename'] = f'{settings.LOGGING_PATH}{self.job_name}.log'
+        if not DEV and not debug:
+            LOGGING['handlers']['file']['filename'] = f'{LOGGING_PATH}{self.job_name}.log'
         else:
-            settings.LOGGING['loggers']['']['handlers'] = ['console']
-            settings.LOGGING['loggers']['pakon-light']['handlers'] = ['console']
+            LOGGING['loggers']['']['handlers'] = ['console']
+            LOGGING['loggers']['pakon-light']['handlers'] = ['console']
 
-        logging.config.dictConfig(settings.LOGGING)
+        logging.config.dictConfig(LOGGING)
 
     def parse_args(self):
         return self.get_parser().parse_args()
@@ -66,3 +74,34 @@ class Job(ABC):
         """
         Override to add your arguments to the parser.
         """
+
+
+class PakonJob(Job):
+    def __init__(self, with_live_db, with_archive_db):
+        if with_live_db:
+            self.live_db_session = self.create_db_session(DB_PATH, Traffic)
+        if with_archive_db:
+            archive_db_path = uci_get('pakon.archive.path') or ARCHIVE_DB_PATH
+            self.archive_db_session = self.create_db_session(archive_db_path, TrafficArchive)
+
+    @staticmethod
+    def create_db_session(path, model):
+        logger.info('Start creating "%s"...', {path})
+        db_directory = os.path.dirname(os.path.abspath(path))
+        os.makedirs(db_directory, exist_ok=True)
+
+        db_engine = create_engine(f'sqlite:///{path}', echo=True)
+        Session = sessionmaker(bind=db_engine)
+        model.metadata.create_all(db_engine)
+
+        logger.info('"%s" is created.', path)
+        return Session()
+
+    def __del__(self):
+        if hasattr(self, 'live_db_session'):
+            logger.info('Close live DB session.')
+            self.live_db_session.close()
+
+        if hasattr(self, 'archive_db_session'):
+            logger.info('Close archive DB session.')
+            self.archive_db_session.close()

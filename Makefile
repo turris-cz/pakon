@@ -38,6 +38,9 @@ $(VENV_NAME)/bin/activate: setup.py
 lint: venv
 	${PYTHON} -m pylint --rcfile=pylintrc pakon_light
 
+test: venv
+	${PYTHON} -m pytest tests
+
 run-create-db: venv
 	${PYTHON} -m pakon_light.cli.create_db
 

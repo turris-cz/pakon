@@ -34,7 +34,7 @@ setuptools.setup(
     extras_require={
         'devel': [
             'pylint==2.1.0',
-            'pytest==3.1.1',
+            'pytest==5.4.1',
         ],
     },
 

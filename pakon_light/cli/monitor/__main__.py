@@ -33,7 +33,7 @@ def main():
 
 class MonitorJob(PakonJob):
     def __init__(self):
-        super().__init__(with_live_db=True, with_archive_db=False)
+        super().__init__(with_live_db=True)
         self.dns_cache = DNSCache()
         self.domain_replace = MultiReplace(load_replaces())
         self.dns_cache.try_load()
@@ -85,7 +85,7 @@ class MonitorJob(PakonJob):
                 except ValueError:
                     settings.logger.warning("Error decoding json.")
                     continue
-                if 'ether' not in data.keys() or 'src' not in data['ether'].keys():
+                if 'ether' not in data or 'src' not in data['ether']:
                     data['ether'] = {}
                     data['ether']['src'] = ''
 

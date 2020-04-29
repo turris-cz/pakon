@@ -77,7 +77,7 @@ class Job(ABC):
 
 
 class PakonJob(Job):
-    def __init__(self, with_live_db, with_archive_db):
+    def __init__(self, with_live_db=False, with_archive_db=False):
         if with_live_db:
             self.live_db_session = self.create_db_session(DB_PATH, Traffic)
         if with_archive_db:

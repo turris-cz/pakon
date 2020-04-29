@@ -14,6 +14,9 @@ UCI_DELIMITER = '__uci__delimiter__'
 
 # TODO: replace with uci bindings - once available
 def uci_get(opt):
+    if settings.DEV:
+        return
+
     child = subprocess.Popen(
         ['/sbin/uci', '-d', UCI_DELIMITER, '-q', 'get', opt],
         stdin=subprocess.PIPE,

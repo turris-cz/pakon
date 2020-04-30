@@ -86,7 +86,6 @@ class PakonJob(Job):
 
     @staticmethod
     def create_db_session(path, model):
-        logger.info('Start creating "%s"...', {path})
         db_directory = os.path.dirname(os.path.abspath(path))
         os.makedirs(db_directory, exist_ok=True)
 
@@ -94,7 +93,7 @@ class PakonJob(Job):
         Session = sessionmaker(bind=db_engine)
         model.metadata.create_all(db_engine)
 
-        logger.info('"%s" is created.', path)
+        logger.info('DB session with "%s" created', path)
         return Session()
 
     def __del__(self):

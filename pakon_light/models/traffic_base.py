@@ -9,7 +9,7 @@ from sqlalchemy import Column, Float, Integer, Sequence, Text
 class TrafficBase():
     __tablename__ = 'traffic'
 
-    id = Column(Integer, Sequence('id_seq'), primary_key=True)
+    rowid = Column(Integer, primary_key=True)
     start = Column(Float, index=True)
     duration = Column(Integer)
     src_mac = Column(Text)

@@ -1,0 +1,50 @@
+|datetime            | dur   | src MAC           | hostname                                | dst port | proto | sent   | recvd |
+|                    |       |                   |                                         |          |       |        |       |
+|2021-03-04 13:03:26 | 20s   | cd:b7:8e:51:a0:53 | api.snapcraft.io                        | https    | tls   |   7KiB |  24KiB|
+|2021-03-04 13:03:27 | 109s  | 4a:b1:36:af:c4:87 | cdimage.ubuntu.com                      | http     |       |   3KiB |   3KiB|
+|2021-03-04 13:03:27 | 49s   | a8:d5:c9:a0:f6:0b | cloud-images.ubuntu.com                 | https    |       | 108KiB |   3MiB|
+|2021-03-04 13:04:15 | <1s   | 81:97:e0:35:27:d8 | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:04:17 | 1s    | b8:3b:7e:b4:b7:37 | images.linuxcontainers.org              | https    | tls   |   6KiB |  18KiB|
+|2021-03-04 13:04:17 | 1s    | b8:3b:7e:b4:b7:37 | uk.images.linuxcontainers.org           | https    | tls   |   6KiB |  23KiB|
+|2021-03-04 13:04:20 | 5s    | a8:d5:c9:a0:f6:0b | api.snapcraft.io                        | https    | tls   |   6KiB |  14KiB|
+|2021-03-04 13:04:47 | <1s   | cd:b7:8e:51:a0:53 | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:05:03 | 180s  | b8:3b:7e:b4:b7:37 | login.vivaldi.net                       | https    | tls   |   3KiB |   7KiB|
+|2021-03-04 13:05:03 | 32s   | a8:d5:c9:a0:f6:0b | downloads.vivaldi.com                   | https    | tls   |   2KiB |   4KiB|
+|2021-03-04 13:05:03 | 6531s | 81:97:e0:35:27:d8 | bifrost.vivaldi.com                     | https    | tls   |   1MiB | 799KiB|
+|2021-03-04 13:05:03 | 240s  | 81:97:e0:35:27:d8 | pdat.matterlytics.com                   | https    | tls   |   5KiB |  10KiB|
+|2021-03-04 13:05:07 | 55s   | cd:b7:8e:51:a0:53 | update.vivaldi.com                      | https    | tls   |   2KiB |   4KiB|
+|2021-03-04 13:05:33 | <1s   | 4a:b1:36:af:c4:87 | api.snapcraft.io                        | https    | ?     | 163B   |  54B  |
+|2021-03-04 13:05:51 | <1s   | 81:97:e0:35:27:d8 | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:08:00 | <1s   | cd:b7:8e:51:a0:53 | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:08:03 | 258s  | b8:3b:7e:b4:b7:37 | github.com                              | https    | tls   |   3KiB |   6KiB|
+|2021-03-04 13:08:28 | 181s  | 4a:b1:36:af:c4:87 | seznam.cz                               | https    | tls   |   9KiB |  30KiB|
+|2021-03-04 13:09:54 | 147s  | 81:97:e0:35:27:d8 | soundcloud.com                          | https    | tls   |  88KiB |   1MiB|
+|2021-03-04 13:12:04 | 18s   | b8:3b:7e:b4:b7:37 | pdat.matterlytics.com                   | https    | tls   |   3KiB |   8KiB|
+|2021-03-04 13:12:16 | <1s   | 21:4f:ff:08:78:fa | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:14:21 | 368s  | b8:3b:7e:b4:b7:37 | soundcloud.com                          | https    | tls   | 186KiB |   6MiB|
+|2021-03-04 13:14:41 | 183s  | a8:d5:c9:a0:f6:0b | thejeshgn.com                           | https    | tls   |  38KiB | 905KiB|
+|2021-03-04 13:19:09 | 128s  | 4a:b1:36:af:c4:87 | default.exp-tas.com                     | https    | tls   |   6KiB |  21KiB|
+|2021-03-04 13:19:13 | 123s  | 4a:b1:36:af:c4:87 | ms-vscode-remote.gallery.vsassets.io    | https    | tls   |   2KiB |  10KiB|
+|2021-03-04 13:19:19 | <1s   | b8:3b:7e:b4:b7:37 | changelogs.ubuntu.com                   | https    | tls   |   2KiB |   9KiB|
+|2021-03-04 13:19:29 | <1s   | a8:d5:c9:a0:f6:0b | github.com                              | https    | tls   |   2KiB |   8KiB|
+|2021-03-04 13:20:48 | <1s   | 4a:b1:36:af:c4:87 | ntp.ubuntu.com                          | 123/udp  | ?     |  90B   |  90B  |
+|2021-03-04 13:22:46 | 18s   | cd:b7:8e:51:a0:53 | 192.168.1.1                             | ssh      | ssh   |  12KiB |  26KiB|
+|2021-03-04 13:24:52 | 294s  | a8:d5:c9:a0:f6:0b | soundcloud.com                          | https    | tls   |  23KiB |  91KiB|
+|2021-03-04 13:25:02 | 595s  | b8:3b:7e:b4:b7:37 | duckduckgo.com                          | https    | tls   |  21KiB | 127KiB|
+|2021-03-04 13:25:02 | 66s   | 21:4f:ff:08:78:fa | links.duckduckgo.com                    | https    | tls   |   2KiB |  12KiB|
+|2021-03-04 13:25:03 | 397s  | 21:4f:ff:08:78:fa | external-content.duckduckgo.com         | https    | tls   |  13KiB | 134KiB|
+|2021-03-04 13:26:34 | 305s  | 4a:b1:36:af:c4:87 | links.duckduckgo.com                    | https    | tls   |   5KiB |  32KiB|
+|2021-03-04 13:26:37 | 304s  | 21:4f:ff:08:78:fa | sdeweb01.sde.ok.gov                     | https    | tls   |  43KiB | 392KiB|
+|2021-03-04 13:27:02 | 188s  | 81:97:e0:35:27:d8 | downloads.vivaldi.com                   | https    | tls   |  15KiB | 321KiB|
+|2021-03-04 13:28:45 | 180s  | cd:b7:8e:51:a0:53 | travis-ci.org                           | https    | tls   |   3KiB |   7KiB|
+|2021-03-04 13:28:45 | 400s  | 81:97:e0:35:27:d8 | coveralls.io                            | https    | tls   |   3KiB |   5KiB|
+|2021-03-04 13:28:45 | 111s  | b8:3b:7e:b4:b7:37 | ocsp.sectigo.com                        | http     | http  | 902B   |   1KiB|
+|2021-03-04 13:28:45 | 180s  | 81:97:e0:35:27:d8 | api.travis-ci.org                       | https    | tls   |   3KiB |   8KiB|
+|2021-03-04 13:31:15 | 403s  | b8:3b:7e:b4:b7:37 | code.tutsplus.com                       | https    | tls   |  16KiB | 389KiB|
+|2021-03-04 13:31:17 | 400s  | 81:97:e0:35:27:d8 | static.tutsplus.com                     | https    | tls   |   5KiB |  84KiB|
+|2021-03-04 13:31:17 | 240s  | cd:b7:8e:51:a0:53 | cookiebot-assets.envato-static.com      | https    | tls   |   3KiB |  10KiB|
+|2021-03-04 13:31:17 | 900s  | a8:d5:c9:a0:f6:0b | twitter.com                             | https    | tls   |   4KiB |   6KiB|
+|2021-03-04 13:31:19 | 348s  | 81:97:e0:35:27:d8 | tutshub.disqus.com                      | https    | tls   |   6KiB |  37KiB|
+|2021-03-04 13:31:19 | 348s  | b8:3b:7e:b4:b7:37 | disqus.com                              | https    | tls   |   6KiB |  46KiB|
+|2021-03-04 13:31:19 | 610s  | 4a:b1:36:af:c4:87 | spotify.com                             | https    | tls   |   3KiB |  10KiB|
+|2021-03-04 13:31:41 | 87s   | cd:b7:8e:51:a0:53 | links.duckduckgo.com                    | https    | tls   |   3KiB |  15KiB|

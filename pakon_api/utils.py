@@ -11,6 +11,7 @@ Filters dictionary:
 """
 
 FILTERS = {
+    "duration": "-d",
     "time": "-t",
     "count": "-c"
 }
@@ -64,7 +65,9 @@ class cliParser:
     def csv_to_json(input: str) -> List[Dict[str, str]]:
         data = []
         reader = csv.reader(input, dialect='piper')
+        # get only header from top
         header = cliParser._strip(next(reader))
         for row in reader:
             data.append(cliParser._filter(dict(zip(header, cliParser._strip(row)))))  # noqa: E501
-        return data
+        # remove empty entries
+        return [x for x in data if x]

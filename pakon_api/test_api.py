@@ -8,6 +8,7 @@ def _load_command_result():
     with open('pakon_api/test_files/pakon-show') as f:
         return f.read().split('\n')
 
+
 @pytest.fixture
 def client(fake_process):
     with app.test_client() as client:

@@ -1,13 +1,16 @@
 import subprocess
 from typing import List
 
-from pakon_api.utils import utilParser
-
 _MASTER_COMMAND = ['/usr/bin/pakon-show']
 
+COMMANDS = {
+    "page": "-p",
+    "number": "-n"
+}
 
-def _run_show(filters) -> List[str]:
-    _command = _MASTER_COMMAND + utilParser.unwrap_query(filters)
+
+def run_show(args) -> List[str]:
+    _command = _MASTER_COMMAND + args
 
     result = subprocess.run(_command, capture_output=True)
     return result.stdout.decode().split('\n')

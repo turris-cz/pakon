@@ -3,18 +3,13 @@ from flask import request
 import csv
 
 from pakon_api.app import logger
+from pakon_api.cli import COMMANDS
 
 """
 Filters dictionary:
     'time': Amount in seconds of time the records are live.
     'count': count of entries that have to be fetched.
 """
-
-FILTERS = {
-    "duration": "-d",
-    "time": "-t",
-    "count": "-c"
-}
 
 csv.register_dialect('piper', delimiter='|', quoting=csv.QUOTE_NONE)
 
@@ -32,10 +27,10 @@ class utilParser:
 
     @staticmethod
     def parse_query(args: List[str]):
-        """ For each FILTER item translate to argument and unwrap value. """
+        """ For each COMMAND item translate to argument and unwrap value. """
         return {
                 trgt: utilParser._test_int(request.args.get(src))
-                for (src, trgt) in FILTERS.items()
+                for (src, trgt) in COMMANDS.items()
                 if args.get(src)
         }
 

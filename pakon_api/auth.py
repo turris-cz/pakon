@@ -1,5 +1,5 @@
 from flask import session
-from pakon_api.db import get_hash, save_password
+from pakon_api.db_man import get_hash, save_password
 
 import pbkdf2
 

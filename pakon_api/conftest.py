@@ -1,9 +1,13 @@
+import os
 import pytest
-from pakon_api.app import app
+from pakon_api import create_app
+from pakon_api.db import get_db
+import tempfile
 
 
 def pytest_configure():
     pytest.api_url = '/pakon/api/get/'
+    pytest.pakon_url = '/pakon/'
 
 
 def _split_query(query):
@@ -32,6 +36,18 @@ def _load_command_result(query):
     return data
 
 
+@pytest.fixture()
+def app():
+    db_fd, db_path = tempfile.mkstemp()
+    app = create_app({"TESTING": True, "DATABASE": db_path})
+    with app.app_context():
+        get_db()
+    yield app
+
+    os.close(db_fd)
+    os.unlink(db_path)
+
+
 @pytest.fixture(params="query")
 def query(request):
     # TODO: make empty query default
@@ -42,11 +58,11 @@ def query(request):
 
 
 @pytest.fixture
-def client(fake_process, query):
+def client(fake_process, query, app):
     """ Fixture to wrap flask client. Provides test function access to api and
 wraps client in correct app_context. """
     with app.test_client() as client:
-        with app.app_context() as ctx:
+        with app.app_context():
             fake_process.register_subprocess(
                 ['/usr/bin/pakon-show', fake_process.any()],
                 stdout=_load_command_result(query)

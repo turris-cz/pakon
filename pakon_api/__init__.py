@@ -18,3 +18,37 @@
 #
 
 __version__ = '0.0.1'
+
+import os
+from flask import Flask, jsonify, request
+
+from pakon_api.backend import fetch_data, process_query, register_user  # noqa: E501, E402
+
+
+def create_app(test_config=None):
+    app = Flask(__name__)
+
+    app.config.from_mapping(
+        DATABASE=os.path.join(app.instance_path, 'auth.json')
+    )
+
+    if test_config is None:
+        app.config.from_pyfile('config.py', silent=True)
+    else:
+        app.config.from_mapping(test_config)
+
+    @app.route('/pakon/api/get/')
+    def get_data():
+        _filters = process_query(request.args)
+        return jsonify(fetch_data(_filters))
+
+    @app.route('/pakon/register', methods=['POST'])
+    def register():
+        res = register_user(request.json["password"])
+        return jsonify(res)
+
+    @app.route('/pakon/login', methods=['POST'])
+    def login():
+        pass
+
+    return app

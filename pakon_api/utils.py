@@ -2,7 +2,6 @@ from typing import List, Dict
 from flask import request
 import csv
 
-from pakon_api.app import logger
 from pakon_api.cli import COMMANDS
 
 """
@@ -23,7 +22,8 @@ class utilParser:
         try:
             return val
         except ValueError as e:
-            logger.error('Invalid number, %r' % e)
+            # g.logger.error('Invalid number, %r' % e)
+            pass
 
     @staticmethod
     def parse_query(args: List[str]):

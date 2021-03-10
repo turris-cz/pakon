@@ -1,7 +1,6 @@
 import os
 import pytest
 from pakon_api import create_app
-from pakon_api.db import get_db
 import tempfile
 
 
@@ -41,8 +40,7 @@ def app():
     db_fd, db_path = tempfile.mkstemp()
     app = create_app({"TESTING": True, "DATABASE": db_path})
     with app.app_context():
-        get_db()
-    yield app
+        yield app
 
     os.close(db_fd)
     os.unlink(db_path)

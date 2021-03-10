@@ -1,5 +1,6 @@
 from flask import session
-from pakon_api.db_man import get_hash, save_password
+from pakon_api.db import get_db
+from tinydb import Query
 
 import pbkdf2
 
@@ -29,3 +30,26 @@ def login_to_pakon(password):
 def logout_from_pakon():
     session['logged'] = False
     return True
+
+
+def save_password(password):
+    # check if password exists
+    db = get_db()
+    db.truncate()
+    res = db.insert({
+        "role": "master",
+        "hash": password
+    })
+    return res == 1
+
+
+def get_hash(role="master"):
+    db = get_db()
+    query = Query()
+    try:
+        entry = db.search(
+            query.role == role
+        )[0]["hash"]
+    except (IndexError, KeyError):
+        return False
+    return entry

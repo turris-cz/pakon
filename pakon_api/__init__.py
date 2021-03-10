@@ -22,7 +22,13 @@ __version__ = '0.0.1'
 import os
 from flask import Flask, jsonify, request
 
-from pakon_api.backend import fetch_data, process_query, register_user  # noqa: E501, E402
+from pakon_api.backend import (
+    fetch_data,
+    process_query,
+    register_user,
+    login,
+    logout
+)
 
 
 def create_app(test_config=None):
@@ -48,7 +54,12 @@ def create_app(test_config=None):
         return jsonify(res)
 
     @app.route('/pakon/login', methods=['POST'])
-    def login():
-        pass
+    def login_route():
+        res = login(request.json["password"])
+        return jsonify(res)
+
+    @app.route('/pakon/logout')
+    def logout_route():
+        return
 
     return app

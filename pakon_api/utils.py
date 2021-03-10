@@ -21,7 +21,7 @@ class utilParser:
         """ test if value is integer """
         try:
             return val
-        except ValueError as e:
+        except ValueError:  # as e:
             # g.logger.error('Invalid number, %r' % e)
             pass
 

@@ -1,7 +1,7 @@
 from pakon_api.utils import cliParser, utilParser
 from pakon_api.cli import run_show
 
-from pakon_api.auth import update_password
+from pakon_api.auth import update_password, login_to_pakon, logout_from_pakon
 
 
 def fetch_data(_filters):
@@ -15,3 +15,11 @@ def process_query(args):
 
 def register_user(password):
     return {"success": update_password(password)}
+
+
+def logout():
+    return {"success": logout_from_pakon()}
+
+
+def login(password):
+    return {"success": login_to_pakon(password)}

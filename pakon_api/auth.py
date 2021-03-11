@@ -1,8 +1,24 @@
 from flask import session
 from pakon_api.db import get_db
 from tinydb import Query
+from functools import wraps
+from flask import jsonify
 
 import pbkdf2
+
+
+def _logged_in():
+    return session.get('logged', False)
+
+
+def authorized(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if _logged_in():
+            func(*args, **kwargs)
+        else:
+            return jsonify({"error": "not authorized"})
+    return wrapper
 
 
 def _encode_pbkdef2(password):
@@ -15,14 +31,17 @@ def _check_encrypted(password):
 
 
 def update_password(password):
-    pwd_en = _encode_pbkdef2(password)
-    return save_password(pwd_en)
+    if get_hash() is False:
+        pwd_en = _encode_pbkdef2(password)
+        return {"success": save_password(pwd_en)}
+    else:
+        return {"error": "admin already registered"}
 
 
 def login_to_pakon(password):
     """ Mark session as `logged` if password is correct. """
     if _check_encrypted(password):
-        # session['logged'] = True
+        session['logged'] = True
         return True
     return False
 

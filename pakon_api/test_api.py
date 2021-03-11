@@ -1,4 +1,6 @@
+# TODO: tests are not working, `app.session['logged']` not patched properly
 import pytest
+
 
 
 @pytest.mark.parametrize('query, cli_command', [
@@ -21,7 +23,7 @@ def test_correct_subprocess_called(
 
 
 @pytest.mark.parametrize('query', [{}])
-def test_parser_ignores_empty_lines(client, fake_process, query):
+def test_parser_ignores_empty_lines(client, fake_process, query, logged_in):
     """ Test if cliParser class ignores empty values. """
     res = client.get(pytest.api_url)
     assert {} not in res.json
@@ -34,7 +36,7 @@ def test_parser_ignores_empty_lines(client, fake_process, query):
         ('?page=2&number=5', 6)
     ]
 )
-def test_number_of_entries(client, fake_process, query, exp):
+def test_number_of_entries(client, fake_process, query, exp, logged_in):
     """ exp: expected record return """
     url_call = pytest.api_url + query
     res = client.get(url_call)

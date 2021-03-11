@@ -49,7 +49,8 @@ def app():
 @pytest.fixture(params="query")
 def query(request):
     # TODO: make empty query default
-    # # see parametrize decorator of func `test_parser_ignores_empty_lines()`
+    # see parametrize decorator of func `test_parser_ignores_empty_lines()`
+    # there is redundant empty query dict
     if type(request.param) is not dict:
         yield None
     yield _split_query(request.param)
@@ -60,9 +61,8 @@ def client(fake_process, query, app):
     """ Fixture to wrap flask client. Provides test function access to api and
 wraps client in correct app_context. """
     with app.test_client() as client:
-        with app.app_context():
-            fake_process.register_subprocess(
-                ['/usr/bin/pakon-show', fake_process.any()],
-                stdout=_load_command_result(query)
-            )
-            yield client
+        fake_process.register_subprocess(
+            ['/usr/bin/pakon-show', fake_process.any()],
+            stdout=_load_command_result(query)
+        )
+        yield client

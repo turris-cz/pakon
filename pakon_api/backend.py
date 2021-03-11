@@ -14,7 +14,7 @@ def process_query(args):
 
 
 def register_user(password):
-    return {"success": update_password(password)}
+    return update_password(password)
 
 
 def logout():

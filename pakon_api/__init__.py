@@ -21,6 +21,7 @@ __version__ = '0.0.1'
 
 import os
 from flask import Flask, jsonify, request
+from pakon_api.auth import authorized
 
 from pakon_api.backend import (
     fetch_data,
@@ -35,8 +36,10 @@ def create_app(test_config=None):
     app = Flask(__name__)
 
     app.config.from_mapping(
-        DATABASE=os.path.join(app.instance_path, 'auth.json')
+        DATABASE=os.path.join('auth.json')
     )
+
+    app.secret_key = 'xdfrgesdfsdcx'
 
     if test_config is None:
         app.config.from_pyfile('config.py', silent=True)
@@ -44,6 +47,7 @@ def create_app(test_config=None):
         app.config.from_mapping(test_config)
 
     @app.route('/pakon/api/get/')
+    @authorized
     def get_data():
         _filters = process_query(request.args)
         return jsonify(fetch_data(_filters))
@@ -60,6 +64,6 @@ def create_app(test_config=None):
 
     @app.route('/pakon/logout')
     def logout_route():
-        return
+        return logout()
 
     return app

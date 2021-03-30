@@ -32,3 +32,8 @@ def test_logout(client, query):
     assert res.json['success']
     res = client.get(pytest.pakon_url + 'logout')
     assert session['logged'] is False
+
+
+@pytest.mark.parametrize('query, logged_in', [('?number=10', True)])
+def test_fixture(client, query, logged_in, app):
+    assert session['logged']

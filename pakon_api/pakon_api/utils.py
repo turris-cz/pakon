@@ -2,7 +2,7 @@ from typing import List, Dict
 from flask import request
 import csv
 
-from pakon_api.cli import COMMANDS
+from pakon_api.pakon_api.cli import COMMANDS
 
 """
 Filters dictionary:

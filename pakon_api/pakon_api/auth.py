@@ -1,5 +1,5 @@
 from flask import session
-from pakon_api.db import get_db
+from pakon_api.pakon_api.db import get_db
 from tinydb import Query
 from functools import wraps
 from flask import jsonify
@@ -17,7 +17,7 @@ def authorized(func):
         if _logged_in():
             func(*args, **kwargs)
         else:
-            return jsonify({"error": "not authorized"})
+            return jsonify({"error": "not authorized"}), 401
     return wrapper
 
 

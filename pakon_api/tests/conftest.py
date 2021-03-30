@@ -1,6 +1,6 @@
 import os
 import pytest
-from pakon_api import create_app
+from pakon_api.pakon_api import create_app
 import tempfile
 
 
@@ -22,7 +22,7 @@ def _split_query(query):
 def _load_command_result(query):
     """ Helper function to simulate `pakon-show` parameters. """
     data = []
-    with open('pakon_api/test_files/pakon-show') as f:
+    with open('pakon_api/tests/test_files/pakon-show') as f:
         data = f.read().split('\n')
     if not query:
         return data
@@ -36,12 +36,15 @@ def _load_command_result(query):
 
 
 @pytest.fixture()
-def app():
+def app(logged_in=False):
     db_fd, db_path = tempfile.mkstemp()
-    app = create_app({"TESTING": True, "DATABASE": db_path})
-    with app.app_context():
-        yield app
-
+    _app = create_app({"TESTING": True, "DATABASE": db_path})
+    ctx = _app.test_request_context()
+    ctx.push()
+    if logged_in:
+        app.session['logged'] = True
+    yield _app
+    ctx.pop()
     os.close(db_fd)
     os.unlink(db_path)
 

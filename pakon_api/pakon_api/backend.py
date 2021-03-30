@@ -1,7 +1,11 @@
-from pakon_api.utils import cliParser, utilParser
-from pakon_api.cli import run_show
+from pakon_api.pakon_api.utils import cliParser, utilParser
+from pakon_api.pakon_api.cli import run_show
 
-from pakon_api.auth import update_password, login_to_pakon, logout_from_pakon
+from pakon_api.pakon_api.auth import (
+    update_password,
+    login_to_pakon,
+    logout_from_pakon,
+)
 
 
 def fetch_data(_filters):

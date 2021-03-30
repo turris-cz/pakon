@@ -2,6 +2,15 @@
 import pytest
 
 
+# @pytest.fixture
+# def login(client):
+#     _sent = {"password": "secureandsecret"}
+#     client.post(pytest.pakon_url + 'register', json=_sent)
+#     client.post(pytest.pakon_url + 'login', json=_sent)
+#     yield
+#     client.post(pytest.pakon_url + 'logout')
+
+
 @pytest.mark.parametrize('query, cli_command', [
     ('', ['/usr/bin/pakon-show']),
     ('?number=15', ['/usr/bin/pakon-show', '-n', '15']),
@@ -11,19 +20,19 @@ import pytest
         ['/usr/bin/pakon-show', '-p', '2', '-n', '16']
     )
 ])
-@pytest.mark.parametrize('logged_in', [True])
 def test_correct_subprocess_called(
-    client, fake_process, query, cli_command, logged_in
+    client, pakon_cli, query, cli_command, # login / auth
 ):
     """ Test if correct parameters are called with api call. """
+    # auth.login()
     url_call = pytest.api_url + query
     res = client.get(url_call)
     assert res.data
-    assert fake_process.calls[0] == cli_command
+    assert pakon_cli.calls[0] == cli_command
 
 
-@pytest.mark.parametrize('query,logged_in', [({}, True)])
-def test_parser_ignores_empty_lines(client, fake_process, query, logged_in):
+@pytest.mark.parametrize('query', [{}])
+def test_parser_ignores_empty_lines(client, pakon_cli, query):
     """ Test if cliParser class ignores empty values. """
     res = client.get(pytest.api_url)
     assert {} not in res.json
@@ -36,7 +45,7 @@ def test_parser_ignores_empty_lines(client, fake_process, query, logged_in):
         ('?page=2&number=5', 6)
     ]
 )
-def test_number_of_entries(client, fake_process, query, exp):
+def test_number_of_entries(client, pakon_cli, query, exp):
     """ exp: expected record return """
     url_call = pytest.api_url + query
     res = client.get(url_call)

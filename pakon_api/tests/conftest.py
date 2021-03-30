@@ -35,16 +35,13 @@ def _load_command_result(query):
     return data
 
 
-@pytest.fixture()
-def app(logged_in=False):
+@pytest.fixture(scope='function')
+def app():
     db_fd, db_path = tempfile.mkstemp()
-    _app = create_app({"TESTING": True, "DATABASE": db_path})
-    ctx = _app.test_request_context()
-    ctx.push()
-    if logged_in:
-        app.session['logged'] = True
-    yield _app
-    ctx.pop()
+    app = create_app({"TESTING": True, "DATABASE": db_path})
+    with app.app_context():
+        yield app
+
     os.close(db_fd)
     os.unlink(db_path)
 
@@ -55,17 +52,43 @@ def query(request):
     # see parametrize decorator of func `test_parser_ignores_empty_lines()`
     # there is redundant empty query dict
     if type(request.param) is not dict:
-        yield None
-    yield _split_query(request.param)
+        return None
+    return _split_query(request.param)
 
 
-@pytest.fixture
-def client(fake_process, query, app):
+@pytest.fixture(scope='function')
+def client(app):
     """ Fixture to wrap flask client. Provides test function access to api and
 wraps client in correct app_context. """
     with app.test_client() as client:
-        fake_process.register_subprocess(
-            ['/usr/bin/pakon-show', fake_process.any()],
-            stdout=_load_command_result(query)
-        )
         yield client
+
+
+@pytest.fixture(scope='function')
+def pakon_cli(fake_process, query):
+    """ Fake process. """
+    fake_process.register_subprocess(
+        ['/usr/bin/pakon-show', fake_process.any()],
+        stdout=_load_command_result(query)
+    )
+    yield fake_process
+
+
+class AuthActions:
+    """ Authorization actions helper class. """
+    def __init__(self, client):
+        self._client = client
+
+    def login(self):
+        _sent = {"password": "secureandsecret"}
+        self._client.post(pytest.pakon_url + 'register', json=_sent)
+        return self._client.post(pytest.pakon_url + 'login', json=_sent)
+
+    def logout(self):
+        return self._client.get(pytest.pakon_url + 'logout')
+
+
+@pytest.fixture()
+def auth(client):
+    """ Authorization fixture. """
+    return AuthActions(client)

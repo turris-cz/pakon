@@ -1,4 +1,4 @@
-from flask import session
+from flask import session, current_app
 from pakon_api.pakon_api.db import get_db
 from tinydb import Query
 from functools import wraps
@@ -47,7 +47,7 @@ def login_to_pakon(password):
 
 
 def logout_from_pakon():
-    session['logged'] = False
+    session.pop("logged")
     return True
 
 

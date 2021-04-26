@@ -19,7 +19,7 @@ def test_create_dbs_if_not_exist(clear_db, TestPakonJob):
 
 
 DB_COLUMNS = [
-    'id',
+    'rowid',
     'start',
     'duration',
     'src_mac',
@@ -42,7 +42,7 @@ def test_create_db_scheme_if_not_exists(clear_db, TestPakonJob):
 
 
 ARCHIVE_DB_COLUMNS = [
-    'id',
+    'rowid',
     'start',
     'duration',
     'src_mac',
@@ -65,6 +65,7 @@ def test_create_archive_db_scheme_if_not_exists(clear_db, TestPakonJob):
 
 
 def _check_db_columns(db_path, columns):
+    breakpoint()
     db_engine = create_engine(f'sqlite:///{db_path}', echo=True)
     meta = MetaData()
     meta.reflect(bind=db_engine)

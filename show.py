@@ -50,6 +50,10 @@ def timespec_valid(string):
             return int(time.time())-int(string[:-1])*60
         else:
             return int(time.time())-int(string)
+    elif string[0]=='@':
+        return int(string[1:])
+    elif string=='now':
+        return int(time.time())
     else:
         if datetime_parse(string, '%d-%m-%YT%H:%M:%S'):
             return datetime_parse(string, '%d-%m-%YT%H:%M:%S')
@@ -77,6 +81,10 @@ def arg_parser():
                         help="End of time window",
                         metavar='DT',
                         type=timespec_valid
+                        )
+    parser.add_argument("-j", "--json",
+                        help="Output as json",
+                        action='store_true',
                         )
     parser.add_argument("-m", "--mac",
                         help="Show just records for specified MAC address OR name (multiple such options can be specified)",
@@ -130,10 +138,20 @@ except:
 finally:
     sock.close()
 
-data=json.loads(response)
+if args.json:
+    print(response)
+    sys.exit(0)
+
+try:
+    data=json.loads(response)
+except:
+    print("Invalid data received, probably a corrupt database")
+    sys.exit(1)
+
 if not data:
     print("no records to show")
     sys.exit(0)
+
 for i in range(len(data)):
     if data[i][1]==0:
         data[i][1]="<1s"

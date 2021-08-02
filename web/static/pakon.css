@@ -1,0 +1,179 @@
+i {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+@keyframes spinner {
+    0% {
+        transform: translate3d(-50%, -50%, 0) rotate(0deg);
+    }
+    100% {
+         transform: translate3d(-50%, -50%, 0) rotate(360deg);
+    }
+}
+
+#spinner::before {
+  animation: 1.5s linear infinite spinner;
+  animation-play-state: running;
+  border: solid 5px #cfd0d1;
+  border-bottom-color: #1c87c9;
+  border-radius: 100px;
+  content: "";
+  height: 160px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate3d(-50%, -50%, 0);
+  width: 160px;
+  margin-left: -80px;
+  margin-top: -80px;
+  will-change: transform;
+  z-index: 2000;
+}
+
+#fog {
+  position: fixed;
+  height: 100%;
+  width: 100%;
+  top: 0px;
+  left: 0px;
+  z-index: 1000;
+  background-color: #00000080;
+}
+
+body {
+    color: black;
+    background-color: white;
+}
+
+#pakon-pager-page li {
+    display: inline;
+    margin: 5px;
+}
+#pakon-pager-page li.current-page {
+    font-weight: bold;
+}
+
+#pakon-results .extra_row {
+    display: none;
+    font-style: italic;
+}
+
+#pakon-results .extra_row td {
+    padding-left: 20px;
+}
+
+#date-from, #date-to, #time-from, #time-to, #apply-changes {
+    float: right;
+    margin-left: 10px;
+    margin-right: 0px;
+}
+
+#page-pakon-plugin {
+    display: inline-block;
+}
+
+#filter-form {
+    display: inline-block;
+    clear: both;
+    width: 100%;
+}
+
+#client-filter, #hostname-filter {
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+}
+
+label {
+    padding-top: 10px;
+    display: block;
+    width: 100%;
+    clear: both;
+}
+
+fieldset {
+    width: 600px;
+    margin: auto;
+}
+
+#content {
+    width: 960px;
+    margin: auto;
+}
+
+#no-data {
+    text-align: center;
+}
+
+#pakon-results {
+    white-space: nowrap;
+}
+
+#pakon-results td, th {
+    padding: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+#pakon-results th {
+    font-weight: bold;
+}
+
+tr.odd, tr.even {
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255,255,255,0);
+}
+
+tr.odd:hover, tr.even:hover {
+    border-color: rgba(0,162,226,1);
+}
+
+tr.odd {
+    background: #EEE;
+}
+tr.even {
+    background: #FFF;
+}
+
+td:nth-child(7), td:nth-child(8), th:nth-child(7), th:nth-child(8) {
+    text-align: right;
+}
+
+#pakon-pager {
+    margin-top: 10px;
+    text-align: right;
+}
+
+#pakon-pager-page {
+    margin: 10px;
+    display: inline-block;
+}
+
+#pakon-pager-pagesize {
+    display: inline-block;
+    width: 10em;
+}
+
+tr.extra_row {
+    border-right-width: 1px;
+    border-right-style: dotted;
+    border-right-color: black;
+    border-left-width: 1px;
+    border-left-style: dotted;
+    border-left-color: black;
+}
+
+tr.extra_last, tr.extra_first {
+    border-bottom-width: 1px;
+    border-bottom-style: dotted;
+    border-bottom-color: black;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 1px;
+}

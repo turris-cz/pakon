@@ -343,7 +343,7 @@ def main():
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling all available space in /var/lib (tmpfs) will probably break your router
     hard_limit = int(uci_get('pakon.monitor.database_limit') or 3000000)
-    run_check = everyN(100000)
+    run_check = everyN(1000)
     while True:
         try:
             line = data_source.get_message()

@@ -96,8 +96,15 @@ Run as a simple flask application. For development install:
 
 Set ``FLASK_APP`` env-var than run:
 
+    ```
     export FLASK_APP=pakon-api
     flask run
+    ```
+
+    perhaps
+    ```
+    export FLASK_ENV=development
+    ```
 
 In case you need to expose further than `localhost` set address
 

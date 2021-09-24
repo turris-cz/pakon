@@ -8,13 +8,13 @@ setup(
     author='CZ.NIC, z.s.p.o. (http://www.nic.cz/)',
     author_email='packaging@turris.cz',
     packages=find_packages(),
-    url='https://gitlab.labs.nic.cz/turris/pakon',
+    url='https://gitlab.nic.cz/turris/pakon',
     license='GPL-3.0-only',
     description='Pakon is a system for monitoring network traffic',
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
     install_requires=[
-        'pyuci @ git+https://gitlab.labs.nic.cz/turris/pyuci.git',
+        'pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git',
     ],
     entry_points={
         'console_scripts': [

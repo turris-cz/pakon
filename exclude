@@ -1,0 +1,4 @@
+.vscode/*
+.venv-pakon/*
+.pytest_cache/*
+venv

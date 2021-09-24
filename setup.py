@@ -15,6 +15,8 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         'pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git',
+        'flask',
+        'jsonschema'
     ],
     entry_points={
         'console_scripts': [

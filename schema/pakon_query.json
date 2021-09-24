@@ -1,0 +1,17 @@
+{
+    "type": "object",
+    "properties": {
+        "hostname": {"type":"string"},
+        "mac": {
+            "type":"string",
+            "pattern": "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$$"
+        },
+        "start": {"type": "string"},
+        "end": {"type": "object"},
+        "aggregate": {
+            "type": "boolean",
+            "enum": [true]
+        }
+    },
+    "additionalProperties": false
+}

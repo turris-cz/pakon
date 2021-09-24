@@ -76,3 +76,62 @@ Pakon-handler gets the data from both *live* and *archive* database and serves t
 Pakon-handler has two modes: timeline and aggregated data. The first (timeline) preserves start time of connections, so you get a list of network flows ordered by time. A single destination may appear many times. In aggregated mode, a single destination appears at most once (for each src_mac). Note that the agregation described in the previous paragraph happens always, regardless of whether the aggregated mode is requested - that is to squeeze simulataneous connection, aggregated mode in the query has a different meaning.
 
 Pakon-handler also doesn't show all the records by default. We observed that many connections are to ad-servers, tracking and so on, which is probably not useful for most of the users. So pakon-handler by default hides domains specified in domains_ignore in *pakon-lists* package. This behavior can be turned off by passing `filter: false` parameter in the query.
+
+
+# Pakon API
+
+Project to wrap Pakon-CLI output to JSON response and provide it as HTTP service for (prefarably) React web UI.
+
+This branch of Pakon-light is pure flask app. Considering to use application spawner.
+
+## Development
+
+You are able to run code on router to play with the code. Just make sure you have pakon installed.
+
+note: better run code in somekind of virtual environment
+
+Run as a simple flask application. For development install:
+
+    pip install flask
+
+Set ``FLASK_APP`` env-var than run:
+
+    ```
+    export FLASK_APP=pakon-api
+    flask run
+    ```
+
+    perhaps
+    ```
+    export FLASK_ENV=development
+    ```
+
+In case you need to expose further than `localhost` set address
+
+    flask run --host 0.0.0.0
+
+## Schema
+
+Query request schema:
+
+```json
+{
+    "type": "object",
+    "properties": {
+        "hostname": {"type":"string"},
+        "mac": {
+            "type":"string",
+            "pattern": "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$$"
+        },
+        "start": {"type": "string"},
+        "end": {"type": "object"},
+        "aggregate": {
+            "type": "boolean",
+            "enum": [true]
+        }
+    },
+    "additionalProperties": false
+}
+```
+
+For further details lookup the ``pakon-show`` command help. The __api__ implements pretty much same functionality.

@@ -5,7 +5,6 @@ import datetime
 import sqlite3
 import logging
 
-from euci import EUci, UciExceptionNotFound
 from ..utils import iter_section, uci_get, INTERVALS
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)

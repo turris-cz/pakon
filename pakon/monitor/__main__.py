@@ -1,6 +1,6 @@
 import json
 import socket
-import os, os.path
+import os
 import sys
 import subprocess
 import re
@@ -141,7 +141,7 @@ def load_replaces():
                     line = line.strip()
                     if not line:
                         continue
-                    match = re.match('"([^"]+)"\s*:\s*"([^"]+)"', line)
+                    match = re.match(r'"([^"]+)"\s*:\s*"([^"]+)"', line)
                     if not match:
                         print("invalid line: " + line)
                         continue
@@ -400,7 +400,7 @@ def main():
     # flows with flow_id are incomplete, delete them
     try:
         con.execute("DELETE FROM traffic WHERE flow_id IS NOT NULL")
-    except:
+    except:  # noqa: E722
         logging.debug("Error cleaning flow_id")
     notify_new_devices = int(uci_get("pakon.monitor.notify_new_devices"))
     if notify_new_devices:

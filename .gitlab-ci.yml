@@ -1,0 +1,20 @@
+.base-image: &py_common
+  image: registry.nic.cz/turris/foris-ci/python3
+
+before_script:
+  - pip install tox
+
+flake8-black:
+  <<: *py_common
+  script:
+    - tox -e lint
+
+test-python37:
+  <<: *py_common
+  script:
+    - tox -e py37
+
+test-python39:
+  <<: *py_common
+  script:
+    - tox -e py39

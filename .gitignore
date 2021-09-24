@@ -1,2 +1,5 @@
 *~
 .excludes
+**/__pycache__
+.venv**
+.tox

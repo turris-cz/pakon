@@ -23,5 +23,5 @@ def pakon_socket(query):
         data = json.loads(response)
     except:
         error.append("no response data")
-    
+
     return data, error

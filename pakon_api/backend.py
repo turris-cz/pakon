@@ -18,20 +18,19 @@ import sys
 #         jsonschema.validate(query, schema)
 #     except ValidationError as e:
 #         return {"error": "{}".format(e)}, 500
-    
+
 #     with pakon_socket() as s:
 #         query = json.dumps(query)
 #         s.sendall(json.dumps(query+"\n").encode())
 #         with s.makefile() as f:
 #             response = f.readline().strip()
-    
+
 #     try:
 #         data=json.loads(response)
 #     except Exception as e:
 #         return {"error": "{}".format(e)}, 500
-     
-#     return data, 200
 
+#     return data, 200
 
 
 def process_query(query):
@@ -40,7 +39,7 @@ def process_query(query):
         jsonschema.validate(query, schema)
     except ValidationError as e:
         return {"error": "{}".format(e)}, 500
-        
+
     query = json_query(query)
     data, error = pakon_socket(query)
 

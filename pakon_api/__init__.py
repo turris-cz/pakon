@@ -22,17 +22,18 @@ from flask import Flask, request, jsonify
 
 from pakon_api.backend import process_query
 
+
 def create_app(test_config=None):
     app = Flask(__name__)
 
     if test_config is None:
-        app.config.from_pyfile('config.py', silent=True)
+        app.config.from_pyfile("config.py", silent=True)
     else:
         app.config.from_mapping(test_config)
 
-    @app.route('/pakon/api/query/', methods=['POST'])
+    @app.route("/pakon/api/query/", methods=["POST"])
     def get_data():
-        data, code =  process_query(request.json)
+        data, code = process_query(request.json)
         return jsonify(data), code
 
     return app

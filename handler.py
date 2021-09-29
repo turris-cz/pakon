@@ -103,14 +103,12 @@ def get_data_from_live(con, where_clause, where_parameters, filter):
     # intervals. Just return it, don't write anything to permanent storage.
     c = con.cursor()
     flows = []
-    for row_mac in c.execute("SELECT DISTINCT src_mac FROM traffic WHERE flow_id IS NULL AND " + where_clause, where_parameters):
-        src_mac = row_mac['src_mac']
-        c2 = con.cursor()
-        for row_hostname in c2.execute("SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname FROM traffic WHERE src_mac = ? AND flow_id IS NULL AND " + where_clause, [src_mac,] + where_parameters):
-            hostname = row_hostname['hostname']
-            if filter and is_ignored(hostname):
-                continue
-            flows += squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where_parameters)
+    for row in c.execute("SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname, src_mac FROM traffic WHERE flow_id IS NULL AND " + where_clause, where_parameters):
+        src_mac = row['src_mac']
+        hostname = row['hostname']
+        if filter and is_ignored(hostname):
+            continue
+        flows += squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where_parameters)
     return flows
 
 

@@ -12,14 +12,14 @@ def pakon_socket(query):
         sock.sendall(query)
         with sock.makefile() as f:
             response = f.readline().strip()
-    except:
-        error.append("cannot read from pakon-socket, is service running?")
+    except Exception as e:
+        error.append(f"cannot read from pakon-socket, is service running? {e}")
     finally:
         sock.close()
 
     try:
         data = json.loads(response)
-    except:
-        error.append("no response data")
+    except Exception as e:
+        error.append(f"no response data. {e}")
 
     return data, error

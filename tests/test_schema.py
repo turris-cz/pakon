@@ -1,6 +1,3 @@
-import json
-from os import error
-import py
 import pytest
 
 

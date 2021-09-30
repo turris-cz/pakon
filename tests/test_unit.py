@@ -1,4 +1,3 @@
-import json
 import pytest
 
 from pakon_api.utils import json_query

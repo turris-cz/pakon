@@ -17,7 +17,6 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import os
 from flask import Flask, request, jsonify
 
 from pakon_api.backend import process_query

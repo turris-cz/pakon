@@ -24,6 +24,7 @@ from pakon_api.backend import process_query
 
 
 def create_app(test_config=None):
+    """We use factory in order to create flask app"""
     app = Flask(__name__)
 
     if test_config is None:

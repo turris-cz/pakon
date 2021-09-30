@@ -19,7 +19,7 @@ In case you need to expose further than `localhost` (on router) set address
 
     flask run --host 0.0.0.0
 
-## Schema
+## Query schema
 
 We should have schema in regard to normilize queries.
 
@@ -27,15 +27,30 @@ Query request schema:
 
 ```json
 {
+    "definitions": {
+        "time": {
+            "type": "string",
+            "pattern": "^(?:[0-9]{2}-){2}[0-9]{4}(?:T(?:[0-9]{2}:){2}[0-9]{2})?$"
+        }
+    },
     "type": "object",
     "properties": {
-        "hostname": {"type":"string"},
-        "mac": {
-            "type":"string",
-            "pattern": "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$$"
+        "hostname": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "pattern": "^[a-z.-]+$"
+            }
         },
-        "start": {"type": "string"},
-        "end": {"type": "object"},
+        "mac": {
+            "type": "array",
+            "items": {
+                "type":"string",
+                "pattern": "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$$"
+            }
+        },
+        "start": {"$ref": "#/definitions/time"},
+        "end": {"$ref": "#/definitions/time"},
         "aggregate": {
             "type": "boolean",
             "enum": [true]
@@ -44,5 +59,18 @@ Query request schema:
     "additionalProperties": false
 }
 ```
+
+## Response schema
+
+Response from backend is list of table rows. The columns are following:
+
+- datetime 
+- dur (duration in seconds)
+- src MAC (source MAC)
+- hostname (ip as fallback)
+- dst port
+- proto (protocol)
+- sent (in KiB)
+- recvd (received in KiB)
 
 For further details lookup the ``pakon-show`` command help. The __api__ implements pretty much same functionality.

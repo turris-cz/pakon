@@ -1,6 +1,4 @@
-from os import error
-from socket import SOCK_NONBLOCK, socket, AF_UNIX, SOCK_STREAM
-from contextlib import contextmanager
+from socket import socket, AF_UNIX, SOCK_STREAM
 
 import json
 
@@ -15,7 +13,7 @@ def pakon_socket(query):
         with sock.makefile() as f:
             response = f.readline().strip()
     except:
-        error.append("cannot read from pako-socket, is service running?")
+        error.append("cannot read from pakon-socket, is service running?")
     finally:
         sock.close()
 

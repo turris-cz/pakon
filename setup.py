@@ -26,11 +26,12 @@ setup(
             'pakon-show = pakon.show.__main__:main',
         ]
     },
+    extras_require={"tests": ["pytest", "flake8", "black"]},
     classifiers=[
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-        'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3 :: Only',
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3 :: Only",
     ],
-    python_requires='~=3.6',
+    python_requires="~=3.7",
     zip_safe=True,
 )

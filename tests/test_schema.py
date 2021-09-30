@@ -1,19 +1,35 @@
 import json
+from os import error
+import py
 import pytest
 
-def test_macaddr(client):
-    res = client.post(pytest.api_url, json={"mac": ["hh:bb:cc:xx:nn:zz"]})
-    assert "Failed validating" in res.json["error"]
-    breakpoint()
 
-def test_hostname(client):
-    res = client.post(pytest.api_url, json={"hostname": [12456]})
-    assert "Failed validating" in res.json["error"]
+@pytest.mark.parametrize(
+    "data,error_msg",
+    [
+        (
+            {"mac": ["hh:bb:cc:xx:nn:zz"]},
+            "'hh:bb:cc:xx:nn:zz' does not match",
+        ),  # invalid mac
+        ({"hostname": [12456]}, "12456 is not of type 'string'"),  # invalid hostname
+        ({"foo": "bar"}, "Additional properties are not allowed"),  # invalid property
+        (
+            {"start": "1111-2021T11:11:11"},
+            "1111-2021T11:11:11' does not match",
+        ),  # invalid date
+    ],
+    indirect=False,
+)
+def test_wrong_data(client, data, error_msg):
+    res = client.post(pytest.api_url, json=data)
+    assert error_msg in res.json["error"]
 
-def test_invalid_property(client):
-    res = client.post(pytest.api_url, json={"foo": "bar"})
-    assert "Additional properties are not allowed" in res.json["error"]
 
-def test_invalid_date(client):
-    res = client.post(pytest.api_url, json={"start": "1111-2021T11:11:11"})
-    assert "Failed validating" in res.json["error"]
+def test_correct_filters(client):
+    query = {
+        "mac": ["11:22:33:44:55:66"],
+        "hostname": ["google.com"],
+        "start": "11-11-2011T11:11:11",
+    }
+    res = client.post(pytest.api_url, json=query)
+    assert "error" not in res.json

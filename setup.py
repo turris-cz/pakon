@@ -18,10 +18,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pakon-maintain = pakon.maintain.__main__:main',
-            'pakon-handler = pakon.handler:main',
-            'pakon-monitor = pakon.monitor:main',
-            'pakon-show = pakon.show:main',
+            'pakon-maintain = pakon.maintain',
+            'pakon-handler = pakon.handler',
+            'pakon-monitor = pakon.monitor',
+            'pakon-show = pakon.show',
         ]
     },
     classifiers=[

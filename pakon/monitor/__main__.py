@@ -1,8 +1,6 @@
-import fileinput
 import json
 import socket
 import os, os.path
-import string
 import sys
 import subprocess
 import re
@@ -14,7 +12,6 @@ import errno
 import logging
 import glob
 import collections
-import queue
 import threading
 import gzip
 import ctypes

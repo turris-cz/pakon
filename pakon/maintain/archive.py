@@ -1,15 +1,8 @@
-import fileinput
-import os, os.path
-import string
-import socket
 import sys
 import subprocess
-import re
 import time
 import datetime
 import sqlite3
-import signal
-import errno
 import logging
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)

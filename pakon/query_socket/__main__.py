@@ -8,6 +8,8 @@ import glob
 import subprocess
 import socketserver
 
+"""Formerly known as `handler.py`. The name `query_socket` actually fits better."""
+
 #TODO: replace with uci bindings - once available
 def uci_get(opt):
     delimiter = '__uci__delimiter__'

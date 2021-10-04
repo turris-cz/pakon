@@ -18,10 +18,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pakon-maintain = pakon.maintain',
-            'pakon-handler = pakon.handler',
-            'pakon-monitor = pakon.monitor',
-            'pakon-show = pakon.show',
+            'pakon-maintain = pakon.maintain.__main__:main',
+            'pakon-handler = pakon.query_socket.__main__:main',  # we may drop exposure here and link the
+            'pakon-monitor = pakon.monitor.__main__:main',  # service to the python library instead
+            'pakon-show = pakon.show.__main__:main',
         ]
     },
     classifiers=[

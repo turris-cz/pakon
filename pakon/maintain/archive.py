@@ -1,16 +1,11 @@
-import fileinput
-import os, os.path
-import string
-import socket
 import sys
 import subprocess
-import re
 import time
 import datetime
 import sqlite3
-import signal
-import errno
 import logging
+
+from euci import EUci, UciExceptionNotFound
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -138,12 +133,15 @@ def squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, sta
 def load_archive_rules():
     rules = []
     i = 0
-    while uci_get("pakon.@archive_rule[{}].up_to".format(i)):
-        up_to = uci_get_time("pakon.@archive_rule[{}].up_to".format(i))
-        window = uci_get_time("pakon.@archive_rule[{}].window".format(i))
-        size_threshold = int(uci_get("pakon.@archive_rule[{}].size_threshold".format(i)) or 0)
-        rules.append( { "up_to": up_to, "window": window, "size_threshold": size_threshold })
-        i = i + 1
+    with EUci() as uci:
+        try:
+            rule = uci.get(f"pakon.@archive{i}")
+            if rule:
+                rule["size_treshold"] = int(rule["size_treshold"])
+                rules.append(rule)
+                i = i + 1
+        except UciExceptionNotFound:
+            pass
     if not rules: #if there is no rule (old configuration?) - add one default rule
         rules.append( { "up_to": 86400, "window": 60, "size_threshold": 4096 })
         logging.info('no rules in configuration - using default {}'.format(str(rules[0])))

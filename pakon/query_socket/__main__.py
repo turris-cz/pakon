@@ -1,16 +1,14 @@
 import os
-import sys
 import time
 import datetime
 import time
 import sqlite3
-import signal
-import errno
-import re
 import json
 import glob
 import subprocess
 import socketserver
+
+"""Formerly known as `handler.py`. The name `query_socket` actually fits better."""
 
 #TODO: replace with uci bindings - once available
 def uci_get(opt):

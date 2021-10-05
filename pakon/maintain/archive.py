@@ -10,36 +10,25 @@ from euci import EUci, UciExceptionNotFound
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
+_INTERVALS = {
+    'M': 60,
+    'H': 3600,
+    'D': 24 * 3600,
+    'W': 7 * 24 * 3600
+}
 
-def uci_get_time(opt, default = None):
-    ret = 0
-    text = uci_get(opt)
-    if not text:
-        text = default
-    if text[-1:].upper() == 'M':
-        ret = int(text[:-1]) * 60
-    elif text[-1:].upper() == 'H':
-        ret = int(text[:-1]) * 3600
-    elif text[-1:].upper() == 'D':
-        ret = int(text[:-1]) * 24 * 3600
-    elif text[-1:].upper() == 'W':
-        ret = int(text[:-1]) * 7 * 24 * 3600
-    else:
-        ret = int(text)
-    return ret
+def parse_time(text):
+    try:
+        return int(text)
+    except ValueError:
+        value, interval_type,  = int(text[:-1]), text[-1:].upper()
+        return _INTERVALS[interval_type] * value
+    finally:
+        return 0
 
-archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+with EUci() as uci:
+    archive_path = uci.get('pakon.archive.path', default='/srv/pakon/pakon-archive.db')
+
 con = sqlite3.connect(archive_path, isolation_level = None, timeout = 30.0)
 con.row_factory = sqlite3.Row
 
@@ -135,9 +124,9 @@ def load_archive_rules():
     i = 0
     with EUci() as uci:
         try:
-            rule = uci.get(f"pakon.@archive{i}")
+            rule = uci.get(f"pakon.@archive_rule[{i}]")
             if rule:
-                rule["size_treshold"] = int(rule["size_treshold"])
+                rule = {key: parse_time(val) for key, val in rule.items()}
                 rules.append(rule)
                 i = i + 1
         except UciExceptionNotFound:
@@ -157,7 +146,8 @@ def archive():
     # maximum number of records in the live database - to prevent filling all available space
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling up all available space may break your router
-    hard_limit = int(uci_get('pakon.archive.database_limit') or 10000000)
+    with EUci() as uci:
+        hard_limit = int(uci.get('pakon.archive.database_limit', default=10000000))
 
     c = con.cursor()
     c.execute('SELECT COUNT(*) FROM live.traffic')
@@ -185,7 +175,10 @@ def archive():
     for i in range(len(rules)):
         squash(i, i+1, rules[i])
     now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
-    c.execute('DELETE FROM traffic WHERE start < ?', (now - uci_get_time('pakon.archive.keep', '4w'),))
+
+    with EUci() as uci:
+        archive_keep = uci.get('pakon.archive.keep', default='4w')
+    c.execute('DELETE FROM traffic WHERE start < ?', (now - parse_time(archive_keep)))
 
     #c.execute('VACUUM')
     #performing it every time is bad - it causes the whole database file to be rewritten

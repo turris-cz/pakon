@@ -4,16 +4,15 @@ import sqlite3
 import subprocess
 
 from euci import EUci
-import euci
+
+from ..utils import uci_get
 
 
 def databases_integrity_check():
-    with EUci() as uci:
-        archive_path = uci.get(
-            'pakon', 'archive', 'path',
-            dtype=str,
-            default='/srv/pakon/pakon-archive.db',
-        )
+    archive_path = uci_get(
+        'pakon', 'archive', 'path',
+        default='/srv/pakon/pakon-archive.db'
+    )
 
     compressed_db_path = '/var/lib/pakon.db.xz'
     live_db_path = '/var/lib/pakon.db'

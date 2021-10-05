@@ -19,6 +19,7 @@ from ctypes.util import find_library
 from cachetools import LRUCache, TTLCache, cached
 
 from .maintain import backup, database
+from ..utils import uci_get
 
 libc = ctypes.CDLL(find_library('c'))
 PR_SET_PDEATHSIG = 1
@@ -29,18 +30,6 @@ def set_death_signal():
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
 
 class everyN:
     def __init__(self, cnt):

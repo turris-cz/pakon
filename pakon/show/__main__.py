@@ -82,6 +82,7 @@ def main():
         if (arg[0] == '-') and len(arg)>1 and arg[1].isdigit(): sys.argv[i] = ' ' + arg
     args=arg_parser()
     query=vars(args)
+    query = {key:val for key,val in query.items() if val is not None}
     query=json.dumps(query)
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:

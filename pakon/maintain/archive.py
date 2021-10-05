@@ -6,28 +6,23 @@ import sqlite3
 import logging
 
 from euci import EUci, UciExceptionNotFound
+from ..utils import itersect, uci_get, INTERVALS
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-_INTERVALS = {
-    'M': 60,
-    'H': 3600,
-    'D': 24 * 3600,
-    'W': 7 * 24 * 3600
-}
-
 def parse_time(text):
+    """Multiply int with time unit multiplier based on INTERVALS mapping"""
     try:
         return int(text)
     except ValueError:
-        value, interval_type,  = int(text[:-1]), text[-1:].upper()
-        return _INTERVALS[interval_type] * value
+        value, tunit,  = int(text[:-1]), text[-1:].upper()
+        return INTERVALS[tunit] * value
     finally:
         return 0
 
-with EUci() as uci:
-    archive_path = uci.get('pakon.archive.path', default='/srv/pakon/pakon-archive.db')
+
+archive_path = uci_get('pakon.archive.path', default='/srv/pakon/pakon-archive.db')
 
 con = sqlite3.connect(archive_path, isolation_level = None, timeout = 30.0)
 con.row_factory = sqlite3.Row
@@ -121,16 +116,10 @@ def squash_for_mac_and_hostname(src_mac, hostname, from_details, to_details, sta
 
 def load_archive_rules():
     rules = []
-    i = 0
-    with EUci() as uci:
-        try:
-            rule = uci.get(f"pakon.@archive_rule[{i}]")
-            if rule:
-                rule = {key: parse_time(val) for key, val in rule.items()}
-                rules.append(rule)
-                i = i + 1
-        except UciExceptionNotFound:
-            pass
+    for rule in itersect('pakon', 'archive_rule'):
+        rule = {key: parse_time(val) for key, val in rule.items()}
+        rules.append(rule)
+
     if not rules: #if there is no rule (old configuration?) - add one default rule
         rules.append( { "up_to": 86400, "window": 60, "size_threshold": 4096 })
         logging.info('no rules in configuration - using default {}'.format(str(rules[0])))
@@ -146,8 +135,7 @@ def archive():
     # maximum number of records in the live database - to prevent filling all available space
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling up all available space may break your router
-    with EUci() as uci:
-        hard_limit = int(uci.get('pakon.archive.database_limit', default=10000000))
+    hard_limit = uci_get('pakon.archive.database_limit', dtype=int, default=10000000)
 
     c = con.cursor()
     c.execute('SELECT COUNT(*) FROM live.traffic')
@@ -176,8 +164,8 @@ def archive():
         squash(i, i+1, rules[i])
     now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 
-    with EUci() as uci:
-        archive_keep = uci.get('pakon.archive.keep', default='4w')
+
+    archive_keep = uci_get('pakon.archive.keep', default='4w')
     c.execute('DELETE FROM traffic WHERE start < ?', (now - parse_time(archive_keep)))
 
     #c.execute('VACUUM')

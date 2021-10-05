@@ -5,28 +5,11 @@ import time
 import sqlite3
 import json
 import glob
-import subprocess
 import socketserver
 
-from euci import EUci, UciExceptionNotFound
+from ..utils import itersect, uci_get
 
 """Formerly known as `handler.py`. The name `query_socket` actually fits better."""
-
-# TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = "__uci__delimiter__"
-    chld = subprocess.Popen(
-        ["/sbin/uci", "-d", delimiter, "-q", "get", opt],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-    )
-    out, err = chld.communicate()
-    out = out.strip().decode("ascii", "ignore")
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
-
 
 proto_ports = {
     "22/tcp": "ssh",
@@ -45,23 +28,9 @@ proto_ports = {
 
 
 def load_names():
-    # mac2name = {}
-    # i = 0
-    # while uci_get("dhcp.@host[{}].name".format(i)):
-    #     mac = uci_get("dhcp.@host[{}].mac".format(i)).lower()
-    #     name = uci_get("dhcp.@host[{}].name".format(i))
-    #     mac2name[mac] = name
-    #     i = i + 1
-    # return mac2name
     mac2name = {}
-    i = 0
-    with EUci() as uci:
-        try:
-            host = uci.get_all("dhcp.@host[{i}]")
-            mac2name[host['mac'].lower()] = host['name']
-            i += 1
-        except UciExceptionNotFound:
-            pass
+    for host in itersect('dhcp', 'host'):
+        mac2name[host['mac'].lower()] = host['name']
     return mac2name
 
 
@@ -287,7 +256,7 @@ def aggregate_flows(flows):
 
 def query(query):
     mac2name = load_names()
-    archive_path = uci_get("pakon.archive.path") or "/srv/pakon/pakon-archive.db"
+    archive_path = uci_get("pakon", "archive" ,"path", default="/srv/pakon/pakon-archive.db")
     con = sqlite3.connect("/var/lib/pakon.db")
     con.row_factory = sqlite3.Row
     con.execute("ATTACH DATABASE ? AS archive", (archive_path,))

@@ -4,19 +4,7 @@ import sqlite3
 import subprocess
 
 from euci import EUci
-
-
-#TODO: replace with uci bindings - once available
-def uci_get(opt):
-    delimiter = '__uci__delimiter__'
-    chld = subprocess.Popen(['/sbin/uci', '-d', delimiter, '-q', 'get', opt],
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    out, err = chld.communicate()
-    out = out.strip().decode('ascii','ignore')
-    if out.find(delimiter) != -1:
-        return out.split(delimiter)
-    else:
-        return out
+import euci
 
 
 def databases_integrity_check():
@@ -75,7 +63,9 @@ def create_databases():
     con.commit()
     con.close()
 
-    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    with EUci() as uci:
+        archive_path = uci.get('pakon.archive.path', default='/srv/pakon/pakon-archive.db')
+
     os.makedirs(os.path.dirname(os.path.abspath(archive_path)), exist_ok=True)
     con = sqlite3.connect(archive_path)
     c = con.cursor()

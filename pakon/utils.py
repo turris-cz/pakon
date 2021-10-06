@@ -1,11 +1,17 @@
 from typing import Iterable, Union
 from euci import EUci, UciExceptionNotFound
 
+INTERVALS = {
+    'M': 60,
+    'H': 3600,
+    'D': 24 * 3600,
+    'W': 7 * 24 * 3600
+}
 
-def uci_get(option: str, **kwargs) -> Union[str, int, bool]:
+def uci_get(*options, **kwargs) -> Union[str, int, bool]:
     """Specify `d_type` if you need `int` without further conversion."""
     with EUci() as uci:
-        ret = uci.get(option, **kwargs)
+        ret = uci.get(*options, **kwargs)
     return ret
 
 
@@ -22,4 +28,5 @@ config='pakon'pakon, section='archive_rule'."""
             yield uci.get_all(section + f'[{i}]')
             i += 1
         except UciExceptionNotFound:
-            raise StopIteration
+            break
+    return StopIteration

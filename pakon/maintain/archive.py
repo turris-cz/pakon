@@ -6,25 +6,18 @@ import sqlite3
 import logging
 
 from euci import EUci, UciExceptionNotFound
-from ..utils import itersect, uci_get
+from ..utils import itersect, uci_get, INTERVALS
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 #logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-_INTERVALS = {
-    'M': 60,
-    'H': 3600,
-    'D': 24 * 3600,
-    'W': 7 * 24 * 3600
-}
-
 def parse_time(text):
-    """Multiply int with time unit multiplier based on _INTERVALS mapping"""
+    """Multiply int with time unit multiplier based on INTERVALS mapping"""
     try:
         return int(text)
     except ValueError:
         value, tunit,  = int(text[:-1]), text[-1:].upper()
-        return _INTERVALS[tunit] * value
+        return INTERVALS[tunit] * value
     finally:
         return 0
 

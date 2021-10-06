@@ -18,7 +18,7 @@ import ctypes
 from ctypes.util import find_library
 from cachetools import LRUCache, TTLCache, cached
 
-from .maintain import backup, database
+from ..maintain import backup, database
 from ..utils import uci_get
 
 libc = ctypes.CDLL(find_library('c'))
@@ -28,8 +28,8 @@ SIGKILL = 9
 def set_death_signal():
     libc.prctl(PR_SET_PDEATHSIG, SIGKILL)
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-#logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+#logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 class everyN:
     def __init__(self, cnt):
@@ -310,7 +310,7 @@ def main():
     database_precheck()
 
     global allowed_interfaces, data_source
-    archive_path = uci_get('pakon.archive.path') or '/srv/pakon/pakon-archive.db'
+    archive_path = uci_get('pakon.archive.path', default='/srv/pakon/pakon-archive.db')
     dns_cache.try_load()
     # isolation_level=None for autocommit mode - we dont want long-lasting transactions
     con = sqlite3.connect('/var/lib/pakon.db', isolation_level=None)
@@ -326,7 +326,7 @@ def main():
         for row in con.execute('SELECT DISTINCT(src_mac) FROM traffic UNION SELECT DISTINCT(src_mac) FROM archive.traffic'):
             known_devices.add(row[0])
         con.execute('DETACH archive')
-    if uci_get('pakon.monitor.mode').strip() == 'filter':
+    if uci_get('pakon.monitor.mode', default=False) == 'filter':
         data_source = ConntrackScriptSource()
     else:
         data_source = UnixSocketSource()
@@ -338,7 +338,7 @@ def main():
     # maximum number of records in the live database - to prevent filling all available space
     # it's recommended not to touch this, unless you know really well what you're doing
     # filling all available space in /var/lib (tmpfs) will probably break your router
-    hard_limit = int(uci_get('pakon.monitor.database_limit') or 3000000)
+    hard_limit = uci_get('pakon.monitor.database_limit', default=3000000)
     run_check = everyN(1000)
     while True:
         try:

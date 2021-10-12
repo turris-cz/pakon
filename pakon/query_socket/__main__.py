@@ -7,7 +7,7 @@ import json
 import glob
 import socketserver
 
-from ..utils import itersect, uci_get
+from ..utils import iter_section, uci_get
 
 """Formerly known as `handler.py`. The name `query_socket` actually fits better."""
 
@@ -29,7 +29,7 @@ proto_ports = {
 
 def load_names():
     mac2name = {}
-    for host in itersect("dhcp", "host"):
+    for host in iter_section("dhcp", "host"):
         mac2name[host["mac"].lower()] = host["name"]
     return mac2name
 
@@ -257,7 +257,7 @@ def aggregate_flows(flows):
 def query(query):
     mac2name = load_names()
     archive_path = uci_get(
-        "pakon", "archive", "path", default="/srv/pakon/pakon-archive.db"
+        "pakon.archive.path", default="/srv/pakon/pakon-archive.db"
     )
     con = sqlite3.connect("/var/lib/pakon.db")
     con.row_factory = sqlite3.Row

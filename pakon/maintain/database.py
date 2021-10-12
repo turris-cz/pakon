@@ -7,7 +7,7 @@ from ..utils import uci_get
 
 def databases_integrity_check():
     archive_path = uci_get(
-        "pakon", "archive", "path", default="/srv/pakon/pakon-archive.db"
+        "pakon.archive.path", default="/srv/pakon/pakon-archive.db"
     )
 
     compressed_db_path = "/var/lib/pakon.db.xz"

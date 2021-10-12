@@ -6,7 +6,7 @@ import sqlite3
 import logging
 
 from euci import EUci, UciExceptionNotFound
-from ..utils import itersect, uci_get, INTERVALS
+from ..utils import iter_section, uci_get, INTERVALS
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -162,7 +162,7 @@ def squash_for_mac_and_hostname(
 
 def load_archive_rules():
     rules = []
-    for rule in itersect("pakon", "archive_rule"):
+    for rule in iter_section("pakon", "archive_rule"):
         rule = {key: parse_time(val) for key, val in rule.items()}
         rules.append(rule)
 

@@ -16,6 +16,7 @@ setup(
     install_requires=[
         'pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git',
     ],
+    extras_require={"tests": ["pytest"]},
     entry_points={
         'console_scripts': [
             'pakon-maintain = pakon.maintain.__main__:main',

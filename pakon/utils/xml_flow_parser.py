@@ -75,15 +75,16 @@ class Element:
             self.children[_name] = item
 
     def set_children_as_attributes(self):
-        if self.children:
-            for k, v in self.children.items():
-                self.__setattr__(k, v)
         try:
             if self.attrs:
                 for k, v in self.attrs.items():
                     self.__setattr__(k, v)
         except AttributeError:
             pass
+
+        if self.children:
+            for k, v in self.children.items():
+                self.__setattr__(k, v)
 
 
 class FlowHandler(ContentHandler):

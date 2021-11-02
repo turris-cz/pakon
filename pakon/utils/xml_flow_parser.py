@@ -5,6 +5,7 @@ import json
 
 
 def _cast_to_int(val):
+    """Try to cast value to <int>, return string otherwise."""
     try:
         return int(val), int
     except ValueError:
@@ -12,6 +13,7 @@ def _cast_to_int(val):
 
 
 class Array(list):
+    """Helper class that enables to call ``dump()`` onto its elements."""
     def __init__(self, li) -> None:
         super().__init__(li)
 
@@ -42,7 +44,7 @@ class Element:
         return f"<Element {self.name}{_attrs}, {self.children.keys()}{_value}>"
 
     def dump(self):
-        """Outpud json like structure."""
+        """Output json like structure."""
         if self.value or self.value == 0:
             return self.value
         else:
@@ -61,13 +63,13 @@ class Element:
     def update_children(self, item):
         _name = item.name
         if item.name in self.children.keys():
-            # key is already present
+            # key is already present in children dict
             _child = self.children[_name]
             if isinstance(_child, Array):
-                # value is already list
+                # value is already Array type (do not use list, we need to dump the result)
                 _child.append(item)
             elif isinstance(_child, Element):
-                # value is not a list
+                # value is not a list, conform the value to list than
                 previous = _child
                 del _child
                 self.children[_name] = Array([previous, item])
@@ -75,11 +77,13 @@ class Element:
             self.children[_name] = item
 
     def set_children_as_attributes(self):
+        """Allows to access children via class attributes
+        example: ``Element.key`` is the same as ``Element.children[key]``."""
         try:
             if self.attrs:
                 for k, v in self.attrs.items():
                     self.__setattr__(k, v)
-        except AttributeError:
+        except AttributeError:  # self.attribs may not be present, refer to __init__()
             pass
 
         if self.children:
@@ -94,36 +98,39 @@ class FlowHandler(ContentHandler):
         super().__init__()
         self.current = callback
 
-    def startElement(self, name, attrs):
-        parent = self.current
+    def startElement(self, name, attrs):  # handle start of an alement
+        parent = self.current  # set current element to intermediate variable
         if name == "unreplied":  # this element requires special handling
             self.current = Element(parent, name, def_val=True)
         else:
             self.current = Element(parent, name, attrs)
-        self.current.append_self_to_parent()
+        self.current.append_self_to_parent()  # assign current element as child to parent
 
-    def endElement(self, name):
+    def endElement(self, name):  # handle end of an element
         self.current = self.current.parent
         self.current.set_children_as_attributes()
 
     def characters(self, content):
-        """Handle formatted XML."""
         _content = content.strip().strip("\n")
-        if _content == "":
+        if _content == "":  # formatted XML presents issue with non empty content
             pass
         else:
             self.current.value, self.value_type = _cast_to_int(_content)
 
 
 class Parser():
+    """Class to help parse the xml, holds the parsing process result."""
     def __init__(self):
-        self.root = Element(None, "XML")
+        self.root = Element(None, "XML")  # essantial class that is exposed to user
     
     def parse(self, xmlstring):
         parseString(xmlstring, FlowHandler(self.root))
 
     def jsonify(self, indent=2):
         return json.dumps(self.root.dump(), indent=indent)
+    
+    def dictify(self):
+        return json.loads(self.jsonify())
     
 
 if __name__ == "__main__":

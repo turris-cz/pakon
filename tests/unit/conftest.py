@@ -160,7 +160,7 @@ JSON1 = """{
       {
         "timeout": 30,
         "id": 1657073971,
-        "unreplied": true,
+        "unreplied": "",
         "direction": "independent"
       }
     ],
@@ -211,7 +211,7 @@ JSON2 = """{
       },
       {
         "id": 1043691933,
-        "unreplied": true,
+        "unreplied": "",
         "direction": "independent"
       }
     ],
@@ -255,7 +255,7 @@ JSON3 = """{
       {
         "timeout": 30,
         "id": 990802630,
-        "unreplied": true,
+        "unreplied": "",
         "direction": "independent"
       }
     ],
@@ -306,7 +306,7 @@ JSON4 = """{
       },
       {
         "id": 3170238355,
-        "unreplied": true,
+        "unreplied": "",
         "direction": "independent"
       }
     ],

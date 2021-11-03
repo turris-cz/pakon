@@ -14,7 +14,7 @@ def test_attributes():
     assert xml.root.flow.meta[0].layer3.protonum == "2"
     assert xml.root.flow.meta[1].layer3.src.value == "192.168.16.255"
     assert xml.root.flow.meta[2].id.value == 1657073971
-    assert xml.root.flow.meta[2].unreplied.value == True
+    assert xml.root.flow.meta[2].unreplied.value == ""
     assert xml.root.flow.meta[2].timeout.value == 30
 
 
@@ -51,4 +51,3 @@ def test_dictify():
     assert {"meta","type"} == set(flow.keys())
     meta0_layer3 = flow["meta"][0]["layer3"]
     assert {"src","dst","protonum","protoname"} == set(meta0_layer3.keys())
-    breakpoint()

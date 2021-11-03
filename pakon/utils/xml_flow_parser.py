@@ -3,6 +3,8 @@ from xml.sax import parseString
 
 import json
 
+__all__ = ["Parser"]
+
 
 def _cast_to_int(val):
     """Try to cast value to <int>, return string otherwise."""
@@ -22,7 +24,9 @@ class Array(list):
 
 
 class Element:
-    """XML element basic class."""
+    """XML element basic class.
+    It has ability to dump its structure to dictionary.
+"""
 
     def __init__(self, parent, name="", attrs=None, def_val=None) -> None:
         self.name = name
@@ -33,8 +37,8 @@ class Element:
         self.value = def_val
 
     def __repr__(self) -> str:
-        _value = ""
         """Debug purposes"""
+        _value = ""
         try:
             _attrs = f", attrs: {self.attrs}"
         except AttributeError:
@@ -45,7 +49,7 @@ class Element:
 
     def dump(self):
         """Output json like structure."""
-        if self.value or self.value == 0:
+        if self.value or self.value == 0 or self.value == '':
             return self.value
         else:
             retval = {key: val.dump() for key, val in self.children.items()}
@@ -69,7 +73,7 @@ class Element:
                 # value is already Array type (do not use list, we need to dump the result)
                 _child.append(item)
             elif isinstance(_child, Element):
-                # value is not a list, conform the value to list than
+                # value is not a list, conform the value to list
                 previous = _child
                 del _child
                 self.children[_name] = Array([previous, item])
@@ -77,7 +81,7 @@ class Element:
             self.children[_name] = item
 
     def set_children_as_attributes(self):
-        """Allows to access children via class attributes
+        """Allows to access children and element attribs via class attributes
         example: ``Element.key`` is the same as ``Element.children[key]``."""
         try:
             if self.attrs:
@@ -100,8 +104,8 @@ class FlowHandler(ContentHandler):
 
     def startElement(self, name, attrs):  # handle start of an alement
         parent = self.current  # set current element to intermediate variable
-        if name == "unreplied":  # this element requires special handling
-            self.current = Element(parent, name, def_val=True)
+        if name in ("unreplied", "assured", "replied"):  # this element requires special handling
+            self.current = Element(parent, name, def_val="")
         else:
             self.current = Element(parent, name, attrs)
         self.current.append_self_to_parent()  # assign current element as child to parent
@@ -120,6 +124,7 @@ class FlowHandler(ContentHandler):
 
 class Parser():
     """Class to help parse the xml, holds the parsing process result."""
+
     def __init__(self):
         self.root = Element(None, "XML")  # essantial class that is exposed to user
     
@@ -130,11 +135,5 @@ class Parser():
         return json.dumps(self.root.dump(), indent=indent)
     
     def dictify(self):
-        return json.loads(self.jsonify())
-    
-
-if __name__ == "__main__":
-    with open("example.xml", "r") as f:
-        p = Parser()
-        p.parse(f.readlines()[0])
-        print(p.jsonify())
+        """Consider having object structure vs bare ``dict``."""
+        return self.root.dump()

@@ -10,27 +10,26 @@ def test_attributes():
     xml.parse(FLOW1)
     assert xml.root.flow.type == "new"
     assert isinstance(xml.root.flow.meta, Array)
-    assert xml.root.flow.meta[0].direction == "original"
-    assert xml.root.flow.meta[0].layer3.protonum == "2"
-    assert xml.root.flow.meta[1].layer3.src.value == "192.168.16.255"
-    assert xml.root.flow.meta[2].id.value == 1657073971
-    assert xml.root.flow.meta[2].unreplied.value == ""
-    assert xml.root.flow.meta[2].timeout.value == 30
+    assert xml.root.flow.original.layer3.protoname == "ipv4"
+    assert xml.root.flow.reply.layer3.src.value == "192.168.16.255"
+    assert xml.root.flow.independent.id.value == 1657073971
+    assert xml.root.flow.independent.unreplied.value == ""
+    assert xml.root.flow.independent.timeout.value == 30
 
 
 def test_port_attributes():
     """Test port attributes"""
     xml = Parser()
     xml.parse(FLOW3)
-    assert xml.root.flow.meta[1].layer4.sport.value == 21027
-    assert xml.root.flow.meta[1].layer4.dport.value == 60308
+    assert xml.root.flow.reply.layer4.sport.value == 21027
+    assert xml.root.flow.reply.layer4.dport.value == 60308
 
 
 def test_counter_attributes():
     xml = Parser()
     xml.parse(FLOW4)
-    assert xml.root.flow.meta[0].counters.packets.value == 1
-    assert xml.root.flow.meta[0].counters.bytes.value == 648
+    assert xml.root.flow.original.counters.packets.value == 1
+    assert xml.root.flow.original.counters.bytes.value == 648
 
 
 @pytest.mark.parametrize(
@@ -47,7 +46,7 @@ def test_dictify():
     """Testing Parser ability to make dictionary of result."""
     xml = Parser()
     xml.parse(FLOW1)
-    flow = xml.dictify()['flow']
-    assert {"meta","type"} == set(flow.keys())
-    meta0_layer3 = flow["meta"][0]["layer3"]
+    flow_dict = xml.dictify()['flow']
+    assert {"meta","type"} == set(flow_dict.keys())
+    meta0_layer3 = flow_dict["meta"][0]["layer3"]
     assert {"src","dst","protonum","protoname"} == set(meta0_layer3.keys())

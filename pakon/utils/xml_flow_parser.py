@@ -5,6 +5,15 @@ import json
 
 __all__ = ["Parser"]
 
+_MAP_ATTRIBUITES = { # map attributes of an element to be key in parent element
+    "meta": "direction"  # in element "meta" make the attribute "direction" value key of parent
+}
+
+_DEFAULTS = {
+    "unreplied": "",
+    "assured": "",
+    "replied": ""
+}
 
 def _cast_to_int(val):
     """Try to cast value to <int>, return string otherwise."""
@@ -17,7 +26,7 @@ def _cast_to_int(val):
 class Array(list):
     """Helper class that enables to call ``dump()`` onto its elements."""
     def __init__(self, li) -> None:
-        super().__init__(li)
+        super().__init__(li)  # Non empty!
 
     def dump(self):
         return [i.dump() for i in self]
@@ -82,7 +91,8 @@ class Element:
 
     def set_children_as_attributes(self):
         """Allows to access children and element attribs via class attributes
-        example: ``Element.key`` is the same as ``Element.children[key]``."""
+        example: ``Element.key`` is the same as ``Element.children[key]``.
+        Also sets childrent Array as class attributes based on provided mapping. `_MAP_ATTRIBUTES`"""
         try:
             if self.attrs:
                 for k, v in self.attrs.items():
@@ -92,6 +102,10 @@ class Element:
 
         if self.children:
             for k, v in self.children.items():
+                if isinstance(v, Array): # handle meta specifically
+                    if v[0].name in _MAP_ATTRIBUITES.keys():
+                        for i in v:
+                            self.__setattr__(getattr(i, _MAP_ATTRIBUITES[i.name]), i)
                 self.__setattr__(k, v)
 
 
@@ -104,8 +118,8 @@ class FlowHandler(ContentHandler):
 
     def startElement(self, name, attrs):  # handle start of an alement
         parent = self.current  # set current element to intermediate variable
-        if name in ("unreplied", "assured", "replied"):  # this element requires special handling
-            self.current = Element(parent, name, def_val="")
+        if name in _DEFAULTS.keys():  # this elements require special handling
+            self.current = Element(parent, name, def_val=_DEFAULTS[name])
         else:
             self.current = Element(parent, name, attrs)
         self.current.append_self_to_parent()  # assign current element as child to parent
@@ -137,3 +151,4 @@ class Parser():
     def dictify(self):
         """Consider having object structure vs bare ``dict``."""
         return self.root.dump()
+

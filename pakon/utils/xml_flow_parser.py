@@ -99,6 +99,7 @@ class Element:
                     self.__setattr__(k, v)
         except AttributeError:  # self.attribs may not be present, refer to __init__()
             pass
+        _ = self.__dict__
 
         if self.children:
             for k, v in self.children.items():
@@ -125,8 +126,8 @@ class FlowHandler(ContentHandler):
         self.current.append_self_to_parent()  # assign current element as child to parent
 
     def endElement(self, name):  # handle end of an element
-        self.current = self.current.parent
         self.current.set_children_as_attributes()
+        self.current = self.current.parent
 
     def characters(self, content):
         _content = content.strip().strip("\n")
@@ -144,6 +145,7 @@ class Parser():
     
     def parse(self, xmlstring):
         parseString(xmlstring, FlowHandler(self.root))
+        self.root.set_children_as_attributes()  # make flow the attribute of root
 
     def jsonify(self, indent=2):
         return json.dumps(self.root.dump(), indent=indent)

@@ -1,0 +1,87 @@
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="src" type="xs:string"/>
+  <xs:element name="dst" type="xs:string"/>
+  <xs:element name="sport" type="xs:int"/>
+  <xs:element name="dport" type="xs:int"/>
+  <xs:element name="packets" type="xs:byte"/>
+  <xs:element name="bytes" type="xs:short"/>
+  <xs:element name="layer3">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="src"/>
+        <xs:element ref="dst"/>
+      </xs:sequence>
+      <xs:attribute type="xs:int" name="protonum"/>
+      <xs:attribute name="protoname">
+        <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="ipv4"/>
+              <xs:enumeration value="ipv6"/>
+            </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="layer4">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="sport"/>
+        <xs:element ref="dport"/>
+      </xs:sequence>
+      <xs:attribute type="xs:int" name="protonum"/>
+      <xs:attribute name="protoname">
+        <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="tcp"/>
+              <xs:enumeration value="udp"/>
+            </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="counters">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="packets"/>
+        <xs:element ref="bytes"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="id" type="xs:long"/>
+  <xs:element name="unreplied" type="xs:string"/>
+  <xs:element name="timeout" type="xs:int"/>
+  <xs:simpleType name="directionType">
+      <xs:restriction base="xs:string">
+        <xs:enumeration value="original"/>
+        <xs:enumeration value="reply"/>
+        <xs:enumeration value="independent"/>
+      </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="meta">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="layer3" minOccurs="0"/>
+        <xs:element ref="layer4" minOccurs="0"/>
+        <xs:element ref="counters" minOccurs="0"/>
+        <xs:element ref="timeout" minOccurs="0"/>
+        <xs:element ref="id" minOccurs="0"/>
+        <xs:element ref="unreplied" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute name="direction" type="directionType"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:simpleType name="flowType">
+  <xs:restriction base="xs:string">
+  <xs:enumeration value="new"/>
+  <xs:enumeration value="destroy"/>
+  </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="flow">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="meta" maxOccurs="unbounded" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute type="flowType" name="type"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

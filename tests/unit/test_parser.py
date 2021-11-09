@@ -1,7 +1,12 @@
 from json.encoder import py_encode_basestring
 import pytest
-from conftest import FLOW1, FLOW2, FLOW3, FLOW4, JSON1, JSON2, JSON3, JSON4
+import xmlschema
+from conftest import FLOW1, FLOW2, FLOW3, FLOW4, FLOW5, JSON1, JSON2, JSON3, JSON4
 from pakon.utils.xml_flow_parser import Parser, Array
+
+from pakon.utils.validation import validate_xml
+
+from xmlschema import validate, XMLSchema as _validate, _XMLSchema
 
 
 def test_attributes():
@@ -12,6 +17,7 @@ def test_attributes():
     assert isinstance(xml.root.flow.meta, Array)
     assert xml.root.flow.original.layer3.protoname == "ipv4"
     assert xml.root.flow.reply.layer3.src.value == "192.168.16.255"
+    assert xml.root.flow.original.layer3.protoname == "ipv4"
     assert xml.root.flow.independent.id.value == 1657073971
     assert xml.root.flow.independent.unreplied.value == ""
     assert xml.root.flow.independent.timeout.value == 30

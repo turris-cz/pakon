@@ -124,6 +124,57 @@ FLOW4 = """<flow type="destroy">
     </meta>
 </flow>"""
 
+FLOW5="""<flow type="new">
+    <meta direction="original">
+        <layer3 protonum="2" protoname="ipv4">
+            <src>192.168.168.250</src>
+            <dst>74.6.143.26</dst>
+        </layer3>
+        <layer4 protonum="1" protoname="icmp"></layer4>
+    </meta>
+    <meta direction="reply">
+        <layer3 protonum="2" protoname="ipv4">
+            <src>74.6.143.26</src>
+            <dst>192.168.168.250</dst>
+        </layer3>
+        <layer4 protonum="1" protoname="icmp"></layer4>
+    </meta>
+    <meta direction="independent">
+        <timeout>30</timeout>
+        <id>2056000897</id>
+        <unreplied/>
+    </meta>
+</flow>"""
+
+
+FLOW6 = """<flow type="destroy">
+	<meta direction="original">
+		<layer3 protonum="2" protoname="ipv4">
+			<src>192.168.168.250</src>
+			<dst>216.58.201.78</dst>
+		</layer3>
+		<layer4 protonum="1" protoname="icmp"></layer4>
+		<counters>
+			<packets>5</packets>
+			<bytes>420</bytes>
+		</counters>
+	</meta>
+	<meta direction="reply">
+		<layer3 protonum="2" protoname="ipv4">
+			<src>216.58.201.78</src>
+			<dst>192.168.168.250</dst>
+		</layer3>
+		<layer4 protonum="1" protoname="icmp"></layer4>
+		<counters>
+			<packets>5</packets>
+			<bytes>420</bytes>
+		</counters>
+	</meta>
+	<meta direction="independent">
+		<id>2350446838</id>
+	</meta>
+</flow>"""
+
 JSON1 = """{
   "flow": {
     "meta": [

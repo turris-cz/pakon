@@ -5,8 +5,7 @@ from conftest import FLOW1, FLOW2, FLOW3, FLOW4, FLOW5, JSON1, JSON2, JSON3, JSO
 from pakon.utils.xml_flow_parser import Parser, Array
 
 from pakon.utils.validation import validate_xml
-
-from xmlschema import validate, XMLSchema as _validate, _XMLSchema
+from xmlschema import XMLSchemaValidationError
 
 
 def test_attributes():
@@ -56,3 +55,10 @@ def test_dictify():
     assert {"meta","type"} == set(flow_dict.keys())
     meta0_layer3 = flow_dict["meta"][0]["layer3"]
     assert {"src","dst","protonum","protoname"} == set(meta0_layer3.keys())
+
+
+def test_validation_error():
+    with pytest.raises(XMLSchemaValidationError) as e:
+        res = validate_xml(FLOW5)
+    assert str(e.value) == 'failed validating \'icmp\' with XsdEnumerationFacets([\'tcp\', \'udp\']):\n\nReason: attribute protoname=\'icmp\': value must be one of [\'tcp\', \'udp\']\n\nSchema:\n\n  <xs:enumeration xmlns:xs="http://www.w3.org/2001/XMLSchema" value="tcp" />\n\nInstance:\n\n  <layer4 protonum="1" protoname="icmp" />\n\nPath: /flow/meta[1]/layer4\n'
+    

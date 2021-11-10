@@ -3,8 +3,8 @@
   <xs:element name="dst" type="xs:string"/>
   <xs:element name="sport" type="xs:int"/>
   <xs:element name="dport" type="xs:int"/>
-  <xs:element name="packets" type="xs:byte"/>
-  <xs:element name="bytes" type="xs:short"/>
+  <xs:element name="packets" type="xs:short"/>
+  <xs:element name="bytes" type="xs:long"/>
   <xs:element name="layer3">
     <xs:complexType>
       <xs:sequence>
@@ -47,9 +47,17 @@
       </xs:sequence>
     </xs:complexType>
   </xs:element>
+  <xs:simpleType name="stateType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="SYN_SENT"/>
+      <xs:enumeration value="ESTABLISHED"/>
+    </xs:restriction>
+  </xs:simpleType>
   <xs:element name="id" type="xs:long"/>
   <xs:element name="unreplied" type="xs:string"/>
+  <xs:element name="assured" type="xs:string"/>
   <xs:element name="timeout" type="xs:int"/>
+  <xs:element name="state" type="stateType"/>
   <xs:simpleType name="directionType">
       <xs:restriction base="xs:string">
         <xs:enumeration value="original"/>
@@ -60,12 +68,14 @@
   <xs:element name="meta">
     <xs:complexType>
       <xs:sequence>
+        <xs:element ref="state" minOccurs="0"/>
         <xs:element ref="layer3" minOccurs="0"/>
         <xs:element ref="layer4" minOccurs="0"/>
         <xs:element ref="counters" minOccurs="0"/>
         <xs:element ref="timeout" minOccurs="0"/>
         <xs:element ref="id" minOccurs="0"/>
         <xs:element ref="unreplied" minOccurs="0"/>
+        <xs:element ref="assured" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="direction" type="directionType"/>
     </xs:complexType>

@@ -2,7 +2,7 @@ import logging
 from re import L
 import sys
 import json
-from logging import INFO, Logger
+from logging import INFO, getLogger
 
 from typing import Tuple
 
@@ -19,7 +19,7 @@ from peewee import (
 
 logging.basicConfig(filename="/var/log/dns_cache.log", level=INFO)
 
-_logger  = Logger(__name__)
+_logger = getLogger(__name__)
 
 from pakon.utils import Objson, open_process
 
@@ -61,8 +61,9 @@ def create_tables():
     db.drop_tables([Client, DNS])
     db.create_tables([Client, DNS])
 
+
 def _dns_entry(entry: Objson) -> Tuple[DNS,bool]:
-    """Returns obect regardles boolena,
+    """Returns obect regardles if is in db or not,
 True if it is arady in database, False if it is created.
 """
     client_port = None
@@ -101,7 +102,6 @@ True if it is arady in database, False if it is created.
             name=name,
             is_ssl=is_ssl
         ), False
-
 
 
 if __name__ == '__main__':

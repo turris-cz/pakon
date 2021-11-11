@@ -1,114 +1,22 @@
 import logging
-from re import DEBUG
 import sys
-from datetime import datetime, time, timedelta
+from datetime import datetime
 
 from xmlschema import XMLSchemaValidationError
-from typing import List, Tuple, TypeVar, Union
 
-from pakon.utils.xml_flow_parser import Element, Parser
+from pakon.utils.xml_flow_parser import Parser
 from pakon.utils import open_process
 from pakon.utils.validation import validate_xml
 
-from peewee import (
-    BigIntegerField,
-    DateTimeField,
-    DoesNotExist,
-    IntegerField,
-    Model,
-    BlobField,
-    PrimaryKeyField,
-    SqliteDatabase,
-    TextField,
-)
+from pakon.conntrack_monitor.database import Flow
 
-db = SqliteDatabase("/var/lib/conntrack_debug.db")
+
 
 _CONNTRACK_WATCH = ["/usr/bin/conntrack-watch", "-se"]
-
-FlowType = TypeVar("FlowType", bound="Flow")
 
 logging.basicConfig(filename="/var/log/conntrack_mon.log", level=logging.INFO)
 
 _logger = logging.getLogger("conntrackmon")
-
-
-class __BaseModel(Model):
-    class Meta:
-        database = db
-
-
-class Flow(__BaseModel):
-    id = PrimaryKeyField()
-    xml = BlobField()  # debug data, remove in production
-    flow_id = BigIntegerField(unique=True)
-    proto = TextField()
-    src_ip = TextField()
-    dest_ip = TextField()
-    src_port = IntegerField(null=True)
-    dest_port = IntegerField(null=True)
-    packets_recvd = IntegerField(default=0)
-    bytes_recvd = IntegerField(default=0)
-    packets_sent = IntegerField(default=0)
-    bytes_sent = IntegerField(default=0)
-    used = DateTimeField(default=datetime.now)
-
-    @classmethod
-    def get_filter_original_or_create(
-        cls, flow: Element, xml: bytes
-    ) -> Tuple[FlowType, bool]:
-        orig = flow.original
-        # used to filter icmp here, but that is filtered on validation
-        try:
-            return (
-                cls.select()
-                .where(
-                    cls.proto == f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    cls.src_ip == orig.layer3.src.value,
-                    cls.dest_ip == orig.layer3.dst.value,
-                    cls.src_port == orig.layer4.sport.value,
-                    cls.dest_port == orig.layer4.dport.value,
-                )
-                .get(),
-                True,
-            )
-        except DoesNotExist:
-            return (
-                cls.create(
-                    xml=xml,
-                    proto=f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    src_ip=orig.layer3.src.value,
-                    dest_ip=orig.layer3.dst.value,
-                    src_port=orig.layer4.sport.value,
-                    dest_port=orig.layer4.dport.value,
-                    flow_id=flow.independent.id.value,
-                ),
-                False,
-            )
-
-    @classmethod
-    def retention_apply(cls: FlowType, minutes: int = 10) -> Union[int, List]:
-        """Delete records older than n minutes having no flow."""
-        dead_flows = cls.select().where(
-            cls.used < datetime.now() - timedelta(minutes=minutes),
-            cls.bytes_sent == 0,
-            cls.bytes_recvd == 0,
-        )
-        ret = []
-        if _logger.level == DEBUG:
-            it = dead_flows.iterator()
-            for flow in it:
-                ret.append(flow)
-        count_deleted = Flow.delete().where(Flow.in_(dead_flows))
-        return ret if ret else count_deleted
-
-    class Meta:
-        table_name = "flows"
-
-
-def create_table():
-    db.drop_tables([Flow])
-    db.create_tables([Flow])
 
 
 def _log_flow_action(action: str, flow: Flow, custom_id: str = None, level="info"):
@@ -190,7 +98,7 @@ if __name__ == "__main__":
                         ret = Flow.retention_apply(5)
                         if isinstance(ret, list):
                             for flow_to_delete in ret:
-                                _log_flow_action("dropping v ", flow_to_delete)
+                                _log_flow_action("dropping v ", flow_to_delete, level="debug")
                         counter = 0
                     counter += 1
 

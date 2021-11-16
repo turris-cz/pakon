@@ -2,6 +2,8 @@ import json
 import time
 import datetime
 
+from pakon import ROOT_PATH
+
 
 _PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]
 
@@ -40,3 +42,18 @@ def load_schema():
     with open("schema/pakon_query.json", "r") as f:
         rv = json.load(f)
     return rv
+
+def load_hostnames():
+    """Helper function to load client macs"""
+
+def load_leases():
+    # TODO ipv6 leases `ubus call dhcp ipv6leases` -> str[Json]
+    leases = {}
+    with open(str(ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
+        for line in f.readlines():
+            timestamp, mac, ip, hostname, _ = line.strip().split(" ")
+            leases[ip] = {
+                        "hostname": hostname,
+                        "mac": mac
+                        }
+    return leases

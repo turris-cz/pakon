@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 # import tempfile
 
-
 def _get_result():
     """Gets raw string"""
     with open("tests/test_result.json", "r") as f:

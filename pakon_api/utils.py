@@ -3,9 +3,21 @@ import time
 import datetime
 
 from pakon import ROOT_PATH
-
+from subprocess import Popen, PIPE
 
 _PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]
+
+
+def _call_ubus_leases():
+    proc = Popen(["ubus", "call", "dhcp", "ipv6leases"], stdout=PIPE)
+    leases, err = proc.communicate()
+    if err:
+        #handle error
+        res = None
+    else:
+        decoded = leases.decode()
+        res = json.loads(decoded)
+    return res
 
 
 def _datetime_parse(string, fmt):
@@ -43,11 +55,8 @@ def load_schema():
         rv = json.load(f)
     return rv
 
-def load_hostnames():
-    """Helper function to load client macs"""
 
-def load_leases():
-    # TODO ipv6 leases `ubus call dhcp ipv6leases` -> str[Json]
+def load_leases(network="br-lan"):
     leases = {}
     with open(str(ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
         for line in f.readlines():
@@ -56,4 +65,17 @@ def load_leases():
                         "hostname": hostname,
                         "mac": mac
                         }
+    ipv6_leases = _call_ubus_leases()
+    ipv6_leases = ipv6_leases.get('device').get(network).get("leases")
+    for lease in ipv6_leases:
+        _duid = lease.get('duid')
+        addresses = lease.get('ipv6-addr')
+        if not addresses:
+            addresses = lease.get('ipv6-prefix')
+        for address in addresses:
+            if address:
+                leases[address.get("address")] = {
+                    "hostname": lease.get('hostname'),
+                    "duid": _duid
+                }
     return leases

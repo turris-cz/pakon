@@ -1,12 +1,13 @@
 import json
-from _pytest.outcomes import importorskip
 import pytest
 from pakon_api import create_app
 
 from unittest.mock import Mock, patch
+from pathlib import Path
+
+import pakon
 
 # import tempfile
-
 
 def _get_result():
     """Gets raw string"""
@@ -17,6 +18,15 @@ def _get_result():
 def pytest_configure():
     pytest.api_url = "/pakon/api/query/"
     pytest.pakon_url = "/pakon/"
+
+
+@pytest.fixture(autouse=True)
+def mock_root_path():
+    mock = Mock()
+    mock.return_value = pakon.PROJECT_ROOT / "tests" / "root"
+
+    with patch('pakon.ROOT_PATH', mock) as p:
+        yield p
 
 
 @pytest.fixture(scope="function")

@@ -11,3 +11,4 @@ def test_path():
 def test_leases():
     leases = load_leases()
     assert leases["192.168.1.218"]["mac"] == "40:e6:57:23:97:2c"
+    _ = leases

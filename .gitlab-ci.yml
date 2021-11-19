@@ -1,6 +1,9 @@
 .base-image: &py_common
   image: registry.nic.cz/turris/foris-ci/python3
 
+variables:
+  FLASK_ENV: testing
+
 before_script:
   - pip install tox
 

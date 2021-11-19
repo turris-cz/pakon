@@ -1,7 +1,6 @@
 import os
 import time
 import datetime
-import time
 import sqlite3
 import json
 import glob

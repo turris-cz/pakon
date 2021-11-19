@@ -107,7 +107,7 @@ def main():
         sock.sendall((query + "\n").encode())
         with sock.makefile() as f:
             response = f.readline().strip()
-    except:
+    except:  # noqa: E722
         print("Can't get data from pakon-handler. Is it running?")
         sys.exit(1)
     finally:

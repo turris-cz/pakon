@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-__version__ = '1.2.2'
+__version__ = "1.2.2"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 

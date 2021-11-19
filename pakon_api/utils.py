@@ -12,7 +12,7 @@ def _call_ubus_leases():
     proc = Popen(["ubus", "call", "dhcp", "ipv6leases"], stdout=PIPE)
     leases, err = proc.communicate()
     if err:
-        #handle error
+        # handle error
         res = None
     else:
         decoded = leases.decode()
@@ -61,21 +61,18 @@ def load_leases(network="br-lan"):
     with open(str(ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
         for line in f.readlines():
             timestamp, mac, ip, hostname, _ = line.strip().split(" ")
-            leases[ip] = {
-                        "hostname": hostname,
-                        "mac": mac
-                        }
+            leases[ip] = {"hostname": hostname, "mac": mac}
     ipv6_leases = _call_ubus_leases()
-    ipv6_leases = ipv6_leases.get('device').get(network).get("leases")
+    ipv6_leases = ipv6_leases.get("device").get(network).get("leases")
     for lease in ipv6_leases:
-        _duid = lease.get('duid')
-        addresses = lease.get('ipv6-addr')
+        _duid = lease.get("duid")
+        addresses = lease.get("ipv6-addr")
         if not addresses:
-            addresses = lease.get('ipv6-prefix')
+            addresses = lease.get("ipv6-prefix")
         for address in addresses:
             if address:
                 leases[address.get("address")] = {
-                    "hostname": lease.get('hostname'),
-                    "duid": _duid
+                    "hostname": lease.get("hostname"),
+                    "duid": _duid,
                 }
     return leases

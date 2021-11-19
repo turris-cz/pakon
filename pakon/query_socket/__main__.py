@@ -97,12 +97,18 @@ def get_data_from_live(con, where_clause, where_parameters, filter):
     # intervals. Just return it, don't write anything to permanent storage.
     c = con.cursor()
     flows = []
-    for row in c.execute("SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname, src_mac FROM traffic WHERE flow_id IS NULL AND " + where_clause, where_parameters):
-        src_mac = row['src_mac']
-        hostname = row['hostname']
+    for row in c.execute(
+        "SELECT DISTINCT COALESCE(app_hostname,dest_ip) AS hostname, src_mac FROM traffic WHERE flow_id IS NULL AND "
+        + where_clause,
+        where_parameters,
+    ):
+        src_mac = row["src_mac"]
+        hostname = row["hostname"]
         if filter and is_ignored(hostname):
             continue
-        flows += squash_live_for_mac_and_hostname(con, src_mac, hostname, where_clause, where_parameters)
+        flows += squash_live_for_mac_and_hostname(
+            con, src_mac, hostname, where_clause, where_parameters
+        )
     return flows
 
 
@@ -256,9 +262,7 @@ def aggregate_flows(flows):
 
 def query(query):
     mac2name = load_names()
-    archive_path = uci_get(
-        "pakon.archive.path", default="/srv/pakon/pakon-archive.db"
-    )
+    archive_path = uci_get("pakon.archive.path", default="/srv/pakon/pakon-archive.db")
     con = sqlite3.connect("/var/lib/pakon.db")
     con.row_factory = sqlite3.Row
     con.execute("ATTACH DATABASE ? AS archive", (archive_path,))

@@ -3,11 +3,13 @@ import pytest
 
 from unittest.mock import Mock, patch
 from pathlib import Path
-
-from pakon_api import create_app
 import pakon
+from pakon_api import create_app
+from pakon import Config
 
+from pathlib import Path
 # import tempfile
+
 
 def _get_result():
     """Gets raw string"""
@@ -22,7 +24,12 @@ def pytest_configure():
 
 @pytest.fixture(autouse=True)
 def mock_root_path(monkeypatch):
-    monkeypatch.setenv("FLASK_ENV", "testing")
+    # def mockreturn():
+    #     return Path(, "")
+    with monkeypatch.context() as m:
+        m.setattr(pakon.Config, "ROOT_PATH", Config.PROJECT_ROOT / "tests" / "root")
+        yield
+
 
 @pytest.fixture(scope="function")
 def mock_socket():
@@ -48,6 +55,7 @@ def app():
 
 
 @pytest.fixture(scope="function")
+
 def client(app):
     """Fixture to wrap flask client. Provides test function access to api and
     wraps client in correct app_context."""

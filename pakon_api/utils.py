@@ -2,14 +2,14 @@ import json
 import time
 import datetime
 
-from pakon import ROOT_PATH, PROJECT_ROOT
+from pakon import Config
 from subprocess import Popen, PIPE
 
 _PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]
 
 
 def _call_ubus_leases():
-    proc = Popen(["ubus", "call", "dhcp", "ipv6leases"], stdout=PIPE)
+    proc = Popen([str(Config.ROOT_PATH / "bin" / "ubus"),"call","dhcp","ipv6leases"], stdout=PIPE)
     leases, err = proc.communicate()
     if err:
         # handle error
@@ -51,14 +51,14 @@ def json_query(query):
 def load_schema():
     """Helper function to load query schema"""
     rv = {}
-    with open(str(PROJECT_ROOT / "schema" / "pakon_query.json"), "r") as f:
+    with open(str(Config.PROJECT_ROOT / "schema" / "pakon_query.json"), "r") as f:
         rv = json.load(f)
     return rv
 
 
 def load_leases(network="br-lan"):
     leases = {}
-    with open(str(ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
+    with open(str(Config.ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
         for line in f.readlines():
             timestamp, mac, ip, hostname, _ = line.strip().split(" ")
             leases[ip] = {"hostname": hostname, "mac": mac}

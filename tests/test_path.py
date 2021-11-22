@@ -1,16 +1,13 @@
 import pytest
-from pakon import ROOT_PATH, PROJECT_ROOT
-import os
+from pakon import Config
+
 
 from pakon_api.utils import load_leases
 
 
-def test_envar():
-    assert os.environ.get("FLASK_ENV") == "testing"
-
-
 def test_path():
-    assert ROOT_PATH == PROJECT_ROOT / "tests" / "root"
+    breakpoint()
+    assert Config.ROOT_PATH == Config.PROJECT_ROOT / "tests" / "root"
 
 
 def test_leases():

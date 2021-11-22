@@ -76,3 +76,12 @@ def load_leases(network="br-lan"):
                     "duid": _duid,
                 }
     return leases
+
+
+def load_neighs():
+    addresses = {}
+    with open(str(Config.ROOT_PATH / "var" / "run" / "pakon" / "neigh.cache")) as f:
+        for line in f.readlines():
+            k, v = line.strip().split(',')
+            addresses.update({k:v})
+    return addresses

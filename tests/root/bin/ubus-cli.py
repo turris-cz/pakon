@@ -8,6 +8,24 @@ DHCP_DATA="""{
         "br-lan": {
             "leases": [
                 {
+                    "duid": "0001000136f456de283926dca45f",
+                    "iaid": 86522150,
+                    "hostname": "Lenovo-G580",
+                    "accept-reconf": false,
+                    "assigned": 3267,
+                    "flags": [
+                        "bound"
+                    ],
+                    "ipv6-addr": [
+                        {
+                            "address": "79f7:88ad:823c:9cf::cc3",
+                            "preferred-lifetime": 230199,
+                            "valid-lifetime": 256119
+                        }
+                    ],
+                    "valid": 43082
+                },
+                {
                     "duid": "0001000126f109de283926dcaa43",
                     "iaid": 86522150,
                     "hostname": "DESKTOP-67NOH93",

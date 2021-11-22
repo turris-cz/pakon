@@ -1,7 +1,12 @@
 import pytest
-
 from pakon import ROOT_PATH, PROJECT_ROOT
+import os
+
 from pakon_api.utils import load_leases
+
+
+def test_envar():
+    assert os.environ.get("FLASK_ENV") == "testing"
 
 
 def test_path():

@@ -1,10 +1,10 @@
 import json
 import pytest
-from pakon_api import create_app
 
 from unittest.mock import Mock, patch
 from pathlib import Path
 
+from pakon_api import create_app
 import pakon
 
 # import tempfile
@@ -21,13 +21,8 @@ def pytest_configure():
 
 
 @pytest.fixture(autouse=True)
-def mock_root_path():
-    mock = Mock()
-    mock.return_value = pakon.PROJECT_ROOT / "tests" / "root"
-
-    with patch('pakon.ROOT_PATH', mock) as p:
-        yield p
-
+def mock_root_path(monkeypatch):
+    monkeypatch.setenv("FLASK_ENV", "testing")
 
 @pytest.fixture(scope="function")
 def mock_socket():

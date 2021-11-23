@@ -1,6 +1,6 @@
 from typing import TypeVar, Tuple
 
-from pakon.utils import Objson
+from pakon.dns_cache.utils import Objson, load_leases
 
 from peewee import (
     Model,
@@ -26,13 +26,24 @@ class __BaseModel(Model):
 class Client(__BaseModel):
     client_id = PrimaryKeyField()
     ip = TextField(unique=True)
+    mac = TextField()
+    hostname = TextField()
 
     @classmethod
     def select_or_create(cls, query: str) -> ClientType:
+        leases = load_leases()
+        mac, hostname = "", ""
+        if query in leases.keys():
+            lease = leases.get(query)
+            mac = lease.get("mac")
+            hostname = lease.get("hostname")
         try:
-            return cls.select().where(cls.ip==query).get()
+            c = cls.select().where(cls.ip==query).get()
+            c.mac = mac
+            c.hostname = hostname
+            return c
         except DoesNotExist:
-            return cls.create(ip=query)
+            return cls.create(ip=query, mac=mac, hostname=hostname)
 
     class Meta:
         table_name = 'clients'

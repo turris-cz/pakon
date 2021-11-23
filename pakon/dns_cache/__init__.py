@@ -6,9 +6,10 @@ from logging import INFO, getLogger
 
 logging.basicConfig(filename="/var/log/dns_cache.log", level=INFO)
 
-_logger = getLogger(__name__)
+_logger = getLogger("dnscache")
 
-from pakon.utils import Objson, open_process
+from pakon.utils import open_process
+from pakon.dns_cache.utils import Objson
 from pakon.dns_cache.database import Dns
 
 

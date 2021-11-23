@@ -1,8 +1,11 @@
+import json
+
 from typing import Iterable, List, Union
 from euci import EUci, UciExceptionNotFound
 
 import subprocess
 from contextlib import AbstractContextManager, contextmanager
+
 
 __all__ = ["INTERVALS", "uci_get", "iter_section", "open_process", "Objson"]
 
@@ -34,19 +37,7 @@ def iter_section(config: str, section: str) -> Iterable[dict]:
 
 
 @contextmanager
-def open_process(command: List[str]):
+def open_process(command: List[str]) -> AbstractContextManager:
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     yield proc
     proc.terminate()
-
-
-class Objson:  # json -> object
-    """Dict structure to Object with attributes"""
-    def __init__(self, __data) -> None:
-        self.__dict__= {
-            key: Objson(val) if isinstance(val,dict)
-            else val for key, val in __data.items()
-        }
-
-    def __repr__(self) -> str:
-        return str(self.__dict__)

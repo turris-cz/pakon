@@ -1,4 +1,4 @@
-import logging
+
 import sys
 import traceback
 from datetime import datetime
@@ -10,14 +10,11 @@ from pakon.utils import open_process
 from pakon.utils.validation import validate_xml
 
 from pakon.conntrack_monitor.database import Flow
+from pakon.conntrack_monitor import logger
 
 
 _CONNTRACK_WATCH = ["/usr/bin/conntrack-watch", "-se"]
 
-logging.basicConfig(filename="/var/log/conntrack_mon.log", level=logging.INFO)
-
-logger = logging.getLogger("conntrackmon")
-logger.level = logging.DEBUG
 
 def _log_flow_action(action: str, flow: Flow, custom_id: str = None, level="info"):
     """Helper function to format log"""

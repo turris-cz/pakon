@@ -28,7 +28,7 @@ class Objson:  # json -> object
         return str(self.__dict__)
 
 
-def load_leases(network="br-lan", ipv6=False):
+def load_leases(network="br-lan", ipv6=True):
     """Source for both ipv4 leases and ipv6"""
     leases = {}
     
@@ -37,6 +37,8 @@ def load_leases(network="br-lan", ipv6=False):
             timestamp, mac, ip, hostname, _ = line.strip().split(" ")
             leases[ip] = {"hostname": hostname, "mac": mac}
     
+    # TODO: ipv6 leases are missing context, maybe fill using ipv4 data
+
     if ipv6:  # ipv6 leases
         ipv6_leases = _call_ubus_leases()
         ipv6_leases = ipv6_leases.get("device").get(network).get("leases")  # TODO: we may filter all the networks
@@ -48,11 +50,15 @@ def load_leases(network="br-lan", ipv6=False):
                 addresses = lease.get("ipv6-prefix")
             for address in addresses:
                 if address:
-                    mac = neighs.get(address.get("address"), _duid)
+                    mac = neighs.pop(address.get("address"), "")
+                    
                     leases[address.get("address")] = {
                         "hostname": lease.get("hostname"),
                         "mac": mac,
                     }
+            for ip, macaddress in neighs.items():
+                # if ip not in leases.keys():
+                leases[ip] = {"mac": macaddress}
     return leases
 
 

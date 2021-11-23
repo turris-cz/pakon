@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
 from typing import TypeVar, Tuple
-from dns_cache import _logger
 
+
+# from pakon.dns_cache.utils import Objson, load_leases
 from pakon.dns_cache.utils import Objson, load_leases
-from pakon import Config
+from pakon.dns_cache import logger
 
 from peewee import (
     Model,
@@ -32,7 +33,7 @@ class __BaseModel(Model):
         res = cls.delete().where(
             cls.used < datetime.now() - timedelta(minutes=minutes),
         )
-        _logger.info('deleted {res} records from {cls.table}')
+        logger.info('deleted {res} records from "{cls._meta.table_name}"')
 
 
 class Client(__BaseModel):
@@ -89,7 +90,8 @@ True if it is arady in database, False if it is created.
             server_ip = _dns.server_ip
             name = _dns.name
         client = Client().select_or_create(client_ip)
-
+        log = client.save()
+        
         try:  # filter out duplicates, different criteria is with ssl and dns
             if is_ssl:
                 record = cls.select().where(

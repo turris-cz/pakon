@@ -1,7 +1,9 @@
 
-import logging
 from typing import Union, TypeVar, Tuple, List
 from datetime import datetime, timedelta
+
+from pakon.conntrack_monitor import logger
+from logging import DEBUG
 
 from peewee import (
     BigIntegerField,
@@ -83,7 +85,7 @@ class Flow(__BaseModel):
             cls.bytes_recvd == 0,
         )
         ret = []
-        if logging.level == logging.DEBUG:
+        if logger.level == DEBUG:
             it = dead_flows.iterator()
             for flow in it:
                 ret.append(flow)

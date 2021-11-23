@@ -27,7 +27,7 @@ DHCP_DATA="""{
                 },
                 {
                     "duid": "0001000126f109de283926dcaa43",
-                    "iaid": 86522150,
+                    "iaid": 86524150,
                     "hostname": "DESKTOP-67NOH93",
                     "accept-reconf": false,
                     "assigned": 3267,
@@ -36,7 +36,7 @@ DHCP_DATA="""{
                     ],
                     "ipv6-addr": [
                         {
-                            "address": "79f7:88ad:823c:9cf::cc3",
+                            "address": "79f7:88ad:823c:9cf::ff5",
                             "preferred-lifetime": 230199,
                             "valid-lifetime": 256119
                         }

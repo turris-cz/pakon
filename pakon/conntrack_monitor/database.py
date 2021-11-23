@@ -80,17 +80,21 @@ class Flow(__BaseModel):
     def retention_apply(cls: FlowType, minutes: int = 10) -> Union[int, List]:
         """Delete records older than n minutes having no flow."""
         dead_flows = cls.select().where(
-            cls.used < datetime.now() - timedelta(minutes=minutes),
-            cls.bytes_sent == 0,
-            cls.bytes_recvd == 0,
-        )
-        ret = []
+                cls.used < datetime.now() - timedelta(minutes=minutes),
+                cls.bytes_sent == 0,
+                cls.bytes_recvd == 0,
+            )
+        
         if logger.level == DEBUG:
+            ret = []
             it = dead_flows.iterator()
             for flow in it:
                 ret.append(flow)
-        count_deleted = Flow.delete().where(Flow.in_(dead_flows))
-        return ret if ret else count_deleted
+                flow.delete_instance()
+            return ret
+        else:
+            count_deleted = dead_flows.delete()
+            return count_deleted
 
     class Meta:
         table_name = "flows"

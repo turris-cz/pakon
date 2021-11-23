@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
 from typing import TypeVar, Tuple
+from dns_cache import _logger
 
 from pakon.dns_cache.utils import Objson, load_leases
+from pakon import Config
 
 from peewee import (
     Model,
@@ -11,6 +14,7 @@ from peewee import (
     PrimaryKeyField,
     SqliteDatabase,
     TextField,
+    DateTimeField,
 )
 db = SqliteDatabase("/var/lib/dns_cache.db")
 
@@ -18,9 +22,17 @@ ClientType = TypeVar("ClientType", bound="Client")
 DnsType = TypeVar("DnsType", bound="Dns")
 
 class __BaseModel(Model):
+    used = DateTimeField(default=datetime.now)
 
     class Meta:
         database = db
+    
+    @classmethod
+    def retention_apply(cls, minutes):
+        res = cls.delete().where(
+            cls.used < datetime.now() - timedelta(minutes=minutes),
+        )
+        _logger.info('deleted {res} records from {cls.table}')
 
 
 class Client(__BaseModel):
@@ -41,6 +53,7 @@ class Client(__BaseModel):
             c = cls.select().where(cls.ip==query).get()
             c.mac = mac
             c.hostname = hostname
+            c.used = datetime.now()
             return c
         except DoesNotExist:
             return cls.create(ip=query, mac=mac, hostname=hostname)

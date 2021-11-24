@@ -4,20 +4,8 @@ import json
 from pakon import Config
 
 
-def _call_ubus_leases():
-    proc = subprocess.Popen([str(Config.ROOT_PATH / "bin" / "ubus"),"call","dhcp","ipv6leases"], stdout=subprocess.PIPE)
-    leases, err = proc.communicate()
-    if err:
-        # handle error
-        res = None
-    else:
-        decoded = leases.decode()
-        res = json.loads(decoded)
-    return res
-
-
 class Objson:  # json -> object
-    """Dict structure to Object with attributes"""
+    """Dict structure to Object with attributes, used for handle dhcp traffic data."""
     def __init__(self, __data) -> None:
         self.__dict__= {
             key: Objson(val) if isinstance(val,dict)
@@ -28,45 +16,72 @@ class Objson:  # json -> object
         return str(self.__dict__)
 
 
-def load_leases(network="br-lan", ipv6=True):
-    """Source for both ipv4 leases and ipv6"""
-    leases = {}
-    
-    with open(str(Config.ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f: # ipv4 leases
-        for line in f.readlines():
-            timestamp, mac, ip, hostname, _ = line.strip().split(" ")
-            leases[ip] = {"hostname": hostname, "mac": mac}
-    
-    # TODO: ipv6 leases are missing context, maybe fill using ipv4 data
-
-    if ipv6:  # ipv6 leases
-        ipv6_leases = _call_ubus_leases()
-        ipv6_leases = ipv6_leases.get("device").get(network).get("leases")  # TODO: we may filter all the networks
-        neighs = load_neighs()
-        for lease in ipv6_leases:
-            _duid = lease.get("duid")  # if no mac address
-            addresses = lease.get("ipv6-addr")
-            if not addresses:  # if there is no address, at least there is prefix
-                addresses = lease.get("ipv6-prefix")
-            for address in addresses:
-                if address:
-                    mac = neighs.pop(address.get("address"), "")
-                    
-                    leases[address.get("address")] = {
-                        "hostname": lease.get("hostname"),
-                        "mac": mac,
-                    }
-            for ip, macaddress in neighs.items():
-                # if ip not in leases.keys():
-                leases[ip] = {"mac": macaddress}
-    return leases
+def _generate_ip_mapping(mac_mapping):
+    retval = {}
+    for mac, data in mac_mapping.items():
+        ipv4 = data.get("ipv4")
+        if ipv4:
+            retval[ipv4] = {"mac": mac, "hostname" : data.get("hostname")}
+        ipv6 = data.get("ipv6", [])
+        if ipv6:
+            for address in ipv6:
+                retval[address] = {"mac": mac, "hostname" : data.get("hostname")}
+    return retval
 
 
-def load_neighs():
-    """Obtain mac address for ipv6 address using `/etc/hotplug.d/neigh/pakon-neigh.sh`"""
-    addresses = {}
-    with open(str(Config.ROOT_PATH / "var" / "run" / "pakon" / "neigh.cache")) as f:
-        for line in f.readlines():
-            k, v = line.strip().split(',')
-            addresses.update({k:v})
-    return addresses
+class LeasesCache:
+    """Provides `mac` <-> `ip` mapping both ways.
+    Conntrack only shows ip addresses in flow, so we use ip as key to get mac address.
+    In context of preparing the data for above we need to have mac address as starting point."""
+
+    @staticmethod
+    def _load_ipv6_leases():
+        """This is actually not used, neccessary info lies in neighs"""
+        proc = subprocess.Popen([str(Config.ROOT_PATH / "bin" / "ubus"),"call","dhcp","ipv6leases"], stdout=subprocess.PIPE)
+        leases, err = proc.communicate()
+        if err:
+            # handle error
+            res = None
+        else:
+            decoded = leases.decode()
+            res = json.loads(decoded)
+        return res
+
+    @staticmethod
+    def _load_ipv4_leases():
+        with open(str(Config.ROOT_PATH / "tmp" / "dhcp.leases"), "r") as f:
+            leases = {}
+            for line in f.readlines():
+                _, mac, ip, hostname, _ = line.strip().split(" ")
+                leases[mac] = {"hostname": hostname, "ipv4": ip}
+            return leases
+
+    @staticmethod
+    def _load_neighs():
+        """Obtain mac address for ipv6 address using `/etc/hotplug.d/neigh/pakon-neigh.sh`"""
+        addresses = {}
+        with open(str(Config.ROOT_PATH / "var" / "run" / "pakon" / "neigh.cache")) as f:
+            for line in f.readlines():
+                v, k = line.strip().split(',')
+                if v.find(":") > 0: # dirty filter only ipv6
+                    addresses[k] = v
+        return addresses
+
+    def __init__(self):
+        self.mac_mapping = {}
+        self.ip_mapping = {}
+        self.update_data()
+
+    def __generate_ip_mapping(self):
+        self.ip_mapping = _generate_ip_mapping(self.mac_mapping)
+
+    def update_data(self):
+        # first and most reliable source is contemporary the `/tmp/dhcp.leases`
+        self.mac_mapping = LeasesCache._load_ipv4_leases()
+        # assign to each mac address corresponding ipv6 address `/var/run/pakon/neigh.cache`
+        neighs = LeasesCache._load_neighs()
+        for mac, ipv6 in neighs.items():
+            current = self.mac_mapping.get(mac, {"ipv6":[]}).get("ipv6",[]) # do not override other addresses
+            self.mac_mapping[mac]["ipv6"] = [*current, ipv6]
+        # than generate maping with `ip` addresses as keys
+        self.__generate_ip_mapping()

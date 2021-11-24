@@ -3,7 +3,7 @@ from typing import TypeVar, Tuple
 
 
 # from pakon.dns_cache.utils import Objson, load_leases
-from pakon.dns_cache.utils import Objson, load_leases
+from pakon.dns_cache.utils import Objson, LeasesCache
 from pakon.dns_cache import logger
 
 from peewee import (
@@ -35,29 +35,35 @@ class __BaseModel(Model):
         )
         logger.info('deleted {res} records from "{cls._meta.table_name}"')
 
+_LEASES_CACHE = LeasesCache()
 
 class Client(__BaseModel):
     client_id = PrimaryKeyField()
-    ip = TextField(unique=True)
-    mac = TextField()
+    mac = TextField(unique=True)
+    # ips = TODO: add ips list
     hostname = TextField()
 
     @classmethod
     def select_or_create(cls, query: str) -> ClientType:
-        leases = load_leases()
+        leases = _LEASES_CACHE.ip_mapping
         mac, hostname = "", ""
         if query in leases.keys():
             lease = leases.get(query)
             mac = lease.get("mac")
             hostname = lease.get("hostname")
         try:
-            c = cls.select().where(cls.ip==query).get()
+            c = cls.select().where(cls.mac==mac).get()
             c.mac = mac
             c.hostname = hostname
             c.used = datetime.now()
             return c
         except DoesNotExist:
-            return cls.create(ip=query, mac=mac, hostname=hostname)
+            return cls.create(mac=mac, hostname=hostname)
+
+    @classmethod
+    def retention_apply(cls, minutes):
+        super().retention_apply(cls, minutes)
+        _LEASES_CACHE.update()
 
     class Meta:
         table_name = 'clients'

@@ -12,6 +12,8 @@ from pakon.utils.validation import validate_xml
 from pakon.conntrack_monitor.database import Flow
 from pakon.conntrack_monitor import logger
 
+from pakon.dns_cache.database import Dns
+
 
 _CONNTRACK_WATCH = ["/usr/bin/conntrack-watch", "-se"]
 
@@ -20,7 +22,7 @@ def _log_flow_action(action: str, flow: Flow, custom_id: str = None, level="info
     """Helper function to format log"""
     _logging_action = getattr(logger, level)
     _id = custom_id if custom_id else f"flow_id: {flow.flow_id}"
-    _logging_action(f"[{action}] {flow.src_ip} to {flow.dest_ip} @ {flow.proto}, {_id}")
+    _logging_action(f"[{action}] {flow.src_mac} to {flow.dest_ip} @ {flow.proto}, {_id}")
 
 
 if __name__ == "__main__":
@@ -86,6 +88,7 @@ if __name__ == "__main__":
                             flow.packets_sent = p.root.flow.reply.counters.packets.value
                             flow.bytes_sent = p.root.flow.reply.counters.bytes.value
                             _log_flow_action("counters + ", flow)
+                        dns = Dns.select().where(Dns.client.ip)
                         flow.save()
                     if counter >= 100:
                         ret = Flow.retention_apply(5)

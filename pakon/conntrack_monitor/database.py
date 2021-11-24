@@ -11,17 +11,20 @@ from peewee import (
     DoesNotExist,
     IntegerField,
     Model,
-    BlobField,
+    # BlobField,
     PrimaryKeyField,
     SqliteDatabase,
     TextField,
 )
 
 from pakon.utils.xml_flow_parser import Element
+from pakon.dns_cache.utils import LeasesCache
 
 db = SqliteDatabase("/var/lib/conntrack_debug.db")
 
 FlowType = TypeVar("FlowType", bound="Flow")
+
+_LEASES_CACHE = LeasesCache()
 
 class __BaseModel(Model):
     class Meta:
@@ -30,18 +33,25 @@ class __BaseModel(Model):
 
 class Flow(__BaseModel):
     id = PrimaryKeyField()
-    xml = BlobField()  # debug data, remove in production
+    # xml = BlobField()  # debug data, remove in production
     flow_id = BigIntegerField(unique=True)
     proto = TextField()
-    src_ip = TextField()
+    src_mac = TextField()
     dest_ip = TextField()
-    src_port = IntegerField(null=True)
+    dest_name = TextField()
+    # src_port = IntegerField(null=True)
     dest_port = IntegerField(null=True)
     packets_recvd = IntegerField(default=0)
     bytes_recvd = IntegerField(default=0)
     packets_sent = IntegerField(default=0)
     bytes_sent = IntegerField(default=0)
     used = DateTimeField(default=datetime.now)
+
+
+    @staticmethod
+    def translate(obj):
+        _ip = obj.layer3.src.value
+        return _LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
 
     @classmethod
     def get_filter_original_or_create(
@@ -54,9 +64,9 @@ class Flow(__BaseModel):
                 cls.select()
                 .where(
                     cls.proto == f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    cls.src_ip == orig.layer3.src.value,
+                    cls.src_mac == Flow.translate(orig),
                     cls.dest_ip == orig.layer3.dst.value,
-                    cls.src_port == orig.layer4.sport.value,
+                    # cls.src_port == orig.layer4.sport.value, 
                     cls.dest_port == orig.layer4.dport.value,
                 )
                 .get(),
@@ -67,9 +77,9 @@ class Flow(__BaseModel):
                 cls.create(
                     xml=xml,
                     proto=f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    src_ip=orig.layer3.src.value,
+                    src_mac=Flow.translate(orig),
                     dest_ip=orig.layer3.dst.value,
-                    src_port=orig.layer4.sport.value,
+                    # src_port=orig.layer4.sport.value,
                     dest_port=orig.layer4.dport.value,
                     flow_id=flow.independent.id.value,
                 ),

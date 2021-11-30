@@ -28,7 +28,7 @@ def _log_flow_action(action: str, flow: Flow, custom_id: str = None, level="info
 if __name__ == "__main__":
     with open_process(_CONNTRACK_WATCH) as proc:
         try:
-            counter = 0
+            counter = 1
             for line in proc.stdout:
                 try:
                     validate_xml(line)
@@ -88,9 +88,9 @@ if __name__ == "__main__":
                             flow.packets_sent = p.root.flow.reply.counters.packets.value
                             flow.bytes_sent = p.root.flow.reply.counters.bytes.value
                             _log_flow_action("counters + ", flow)
-                        dns = Dns.select().where(Dns.client.ip)
+                        # dns = Dns.select().where(Dns.client.ip)
                         flow.save()
-                    if counter >= 100:
+                    if counter >= 126:
                         ret = Flow.retention_apply(5)
                         if isinstance(ret, list):
                             for flow_to_delete in ret:

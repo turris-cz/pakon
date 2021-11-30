@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 import pakon
 from pakon_api import create_app
-from pakon import Config
+from pakon.config import Config
 
 from pathlib import Path
 # import tempfile

@@ -1,5 +1,5 @@
 import pytest
-from pakon import Config
+from pakon.config import Config
 
 
 from pakon.utils import load_leases, load_neighs

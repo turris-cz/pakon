@@ -18,13 +18,11 @@ from peewee import (
 )
 
 from pakon.utils.xml_flow_parser import Element
-from pakon.dns_cache.utils import LeasesCache
+# from pakon import LEASES_CACHE
 
 db = SqliteDatabase("/var/lib/conntrack_debug.db")
 
 FlowType = TypeVar("FlowType", bound="Flow")
-
-_LEASES_CACHE = LeasesCache()
 
 class __BaseModel(Model):
     class Meta:
@@ -38,7 +36,7 @@ class Flow(__BaseModel):
     proto = TextField()
     src_mac = TextField()
     dest_ip = TextField()
-    dest_name = TextField()
+    dest_name = TextField(null=True)
     # src_port = IntegerField(null=True)
     dest_port = IntegerField(null=True)
     packets_recvd = IntegerField(default=0)
@@ -48,10 +46,10 @@ class Flow(__BaseModel):
     used = DateTimeField(default=datetime.now)
 
 
-    @staticmethod
-    def translate(obj):
-        _ip = obj.layer3.src.value
-        return _LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
+    # @staticmethod
+    # def translate(obj):
+    #     _ip = obj.layer3.src.value
+    #     return LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
 
     @classmethod
     def get_filter_original_or_create(
@@ -64,7 +62,8 @@ class Flow(__BaseModel):
                 cls.select()
                 .where(
                     cls.proto == f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    cls.src_mac == Flow.translate(orig),
+                    # cls.src_mac == Flow.translate(orig),
+                    cls.src_mac == orig.layer3.src.value,
                     cls.dest_ip == orig.layer3.dst.value,
                     # cls.src_port == orig.layer4.sport.value, 
                     cls.dest_port == orig.layer4.dport.value,
@@ -77,7 +76,8 @@ class Flow(__BaseModel):
                 cls.create(
                     xml=xml,
                     proto=f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    src_mac=Flow.translate(orig),
+                    # src_mac=Flow.translate(orig),
+                    src_mac=orig.layer3.src.value,
                     dest_ip=orig.layer3.dst.value,
                     # src_port=orig.layer4.sport.value,
                     dest_port=orig.layer4.dport.value,

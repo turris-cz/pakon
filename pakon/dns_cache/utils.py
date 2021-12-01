@@ -82,6 +82,9 @@ class LeasesCache:
         neighs = LeasesCache._load_neighs()
         for mac, ipv6 in neighs.items():
             current = self.mac_mapping.get(mac, {"ipv6":[]}).get("ipv6",[]) # do not override other addresses
-            self.mac_mapping[mac]["ipv6"] = [*current, ipv6]
+            if mac in self.mac_mapping.keys():  # mac is already in ipv4 leases
+                self.mac_mapping[mac]["ipv6"] = [*current, ipv6]
+            else:
+                self.mac_mapping[mac] = {"ipv6": [ipv6]}
         # than generate maping with `ip` addresses as keys
         self.__generate_ip_mapping()

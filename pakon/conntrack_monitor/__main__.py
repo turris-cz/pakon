@@ -1,6 +1,7 @@
 
 import sys
 import traceback
+import re
 from datetime import datetime
 
 from xmlschema import XMLSchemaValidationError
@@ -13,6 +14,8 @@ from pakon.conntrack_monitor.database import Flow
 from pakon.conntrack_monitor import logger
 
 from pakon.dns_cache.database import Dns
+
+_MAC_ADDRESS = re.compile(r'^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$')
 
 
 _CONNTRACK_WATCH = ["/usr/bin/conntrack-watch", "-se"]
@@ -46,8 +49,11 @@ if __name__ == "__main__":
                             _log_flow_action(" skipping >> ", flow)
                         else:
                             # brand new type of flow, save for later
-                            _log_flow_action(" saving |> ", flow)
-                            flow.save()
+                            if bool(_MAC_ADDRESS.match(flow.src_mac)):
+                                _log_flow_action(" saving |> ", flow)
+                                flow.save()
+                            else:
+                                _log_flow_action("no-mac >> ", flow)
 
                     else:  # if p.root.flow.type =="destroy":
                         flow.used = datetime.now()
@@ -88,8 +94,10 @@ if __name__ == "__main__":
                             flow.packets_sent = p.root.flow.reply.counters.packets.value
                             flow.bytes_sent = p.root.flow.reply.counters.bytes.value
                             _log_flow_action("counters + ", flow)
-                        # dns = Dns.select().where(Dns.client.ip)
-                        flow.save()
+                        if bool(_MAC_ADDRESS.match(flow.src_mac)):
+                            flow.save()
+                        else:
+                            _log_flow_action("no-mac >> ", flow)
                     if counter >= 126:
                         ret = Flow.retention_apply(5)
                         if isinstance(ret, list):

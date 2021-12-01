@@ -1,6 +1,9 @@
 
+from re import I
 from typing import Union, TypeVar, Tuple, List
 from datetime import datetime, timedelta
+from pakon.dns_cache.database import Dns
+
 
 from pakon.conntrack_monitor import logger
 from logging import DEBUG
@@ -18,7 +21,7 @@ from peewee import (
 )
 
 from pakon.utils.xml_flow_parser import Element
-# from pakon import LEASES_CACHE
+from pakon.dns_cache.utils import LeasesCache
 
 db = SqliteDatabase("/var/lib/conntrack_debug.db")
 
@@ -28,11 +31,12 @@ class __BaseModel(Model):
     class Meta:
         database = db
 
+_LEASES_CACHE = LeasesCache()
 
 class Flow(__BaseModel):
     id = PrimaryKeyField()
     # xml = BlobField()  # debug data, remove in production
-    flow_id = BigIntegerField(unique=True)
+    flow_id = BigIntegerField()
     proto = TextField()
     src_mac = TextField()
     dest_ip = TextField()
@@ -46,26 +50,27 @@ class Flow(__BaseModel):
     used = DateTimeField(default=datetime.now)
 
 
-    # @staticmethod
-    # def translate(obj):
-    #     _ip = obj.layer3.src.value
-    #     return LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
+    @staticmethod
+    def translate(obj):
+        _ip = obj.layer3.src.value
+        return _LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
 
     @classmethod
     def get_filter_original_or_create(
         cls, flow: Element, xml: bytes
     ) -> Tuple[FlowType, bool]:
         orig = flow.original
-        # used to filter icmp here, but that is filtered on validation
+        src_mac = Flow.translate(orig)
+        # get the server saved dns hosntame
+        ret = Dns.get_hostname(src_mac, orig.layer3.dst.value)
+        name = ret.name if isinstance(ret, Dns) else None
         try:
             return (
                 cls.select()
                 .where(
                     cls.proto == f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    # cls.src_mac == Flow.translate(orig),
-                    cls.src_mac == orig.layer3.src.value,
+                    cls.src_mac == src_mac,
                     cls.dest_ip == orig.layer3.dst.value,
-                    # cls.src_port == orig.layer4.sport.value, 
                     cls.dest_port == orig.layer4.dport.value,
                 )
                 .get(),
@@ -76,10 +81,9 @@ class Flow(__BaseModel):
                 cls.create(
                     xml=xml,
                     proto=f"{orig.layer3.protoname}/{orig.layer4.protoname}",
-                    # src_mac=Flow.translate(orig),
-                    src_mac=orig.layer3.src.value,
+                    src_mac=src_mac,
+                    dest_name=name,
                     dest_ip=orig.layer3.dst.value,
-                    # src_port=orig.layer4.sport.value,
                     dest_port=orig.layer4.dport.value,
                     flow_id=flow.independent.id.value,
                 ),
@@ -94,7 +98,7 @@ class Flow(__BaseModel):
                 cls.bytes_sent == 0,
                 cls.bytes_recvd == 0,
             )
-        
+        _LEASES_CACHE.update_data()
         if logger.level == DEBUG:
             ret = []
             it = dead_flows.iterator()

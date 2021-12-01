@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import TypeVar, Tuple
+from typing import TypeVar, Tuple, Optional
 
 from pakon.dns_cache.utils import LeasesCache, Objson
 from pakon.dns_cache import logger
@@ -63,6 +63,7 @@ class Client(__BaseModel):
 
     @classmethod
     def retention_apply(cls, minutes):
+        """Retention + check"""
         super().retention_apply(cls, minutes)
         _LEASES_CACHE.update()
 
@@ -109,11 +110,16 @@ True if it is already in database, False if it is created.
                 is_ssl=is_ssl
             ), False
     
-#     def get_optimal_hostname(src_ip, dest_ip):
-#         """In optimal situation, there should be hostname for only one client. As fallback
-# we should return anything we have."""
-
-        
+    @classmethod
+    def get_hostname(cls, mac: str, server_ip: str) -> Optional[DnsType]:
+        try:
+            d = cls.select(cls,Client).join(Client).where(
+                cls.server_ip == server_ip,
+                Client.mac == mac
+            ).get()
+            return d
+        except DoesNotExist:
+            return False
 
 def create_tables():
     db.drop_tables([Client, Dns])

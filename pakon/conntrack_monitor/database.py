@@ -78,7 +78,7 @@ class Flow(__BaseModel):
             )
         except DoesNotExist:
             return (
-                cls.create(
+                cls(
                     xml=xml,
                     proto=f"{orig.layer3.protoname}/{orig.layer4.protoname}",
                     src_mac=src_mac,

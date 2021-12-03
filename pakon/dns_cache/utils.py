@@ -6,10 +6,11 @@ from pakon.config import Config
 
 class Objson:  # json -> object
     """Dict structure to Object with attributes, used for handle dhcp traffic data."""
+
     def __init__(self, __data) -> None:
-        self.__dict__= {
-            key: Objson(val) if isinstance(val,dict)
-            else val for key, val in __data.items()
+        self.__dict__ = {
+            key: Objson(val) if isinstance(val, dict) else val
+            for key, val in __data.items()
         }
 
     def __repr__(self) -> str:
@@ -21,11 +22,11 @@ def _generate_ip_mapping(mac_mapping):
     for mac, data in mac_mapping.items():
         ipv4 = data.get("ipv4")
         if ipv4:
-            retval[ipv4] = {"mac": mac, "hostname" : data.get("hostname")}
+            retval[ipv4] = {"mac": mac, "hostname": data.get("hostname")}
         ipv6 = data.get("ipv6", [])
         if ipv6:
             for address in ipv6:
-                retval[address] = {"mac": mac, "hostname" : data.get("hostname")}
+                retval[address] = {"mac": mac, "hostname": data.get("hostname")}
     return retval
 
 
@@ -37,7 +38,10 @@ class LeasesCache:
     @staticmethod
     def _load_ipv6_leases():
         """This is actually not used, neccessary info lies in neighs"""
-        proc = subprocess.Popen([str(Config.ROOT_PATH / "bin" / "ubus"),"call","dhcp","ipv6leases"], stdout=subprocess.PIPE)
+        proc = subprocess.Popen(
+            [str(Config.ROOT_PATH / "bin" / "ubus"), "call", "dhcp", "ipv6leases"],
+            stdout=subprocess.PIPE,
+        )
         leases, err = proc.communicate()
         if err:
             # handle error
@@ -62,8 +66,8 @@ class LeasesCache:
         addresses = {}
         with open(str(Config.ROOT_PATH / "var" / "run" / "pakon" / "neigh.cache")) as f:
             for line in f.readlines():
-                v, k = line.strip().split(',')
-                if v.find(":") > 0: # dirty filter only ipv6
+                v, k = line.strip().split(",")
+                if v.find(":") > 0:  # dirty filter only ipv6
                     addresses[k] = v
         return addresses
 
@@ -81,7 +85,9 @@ class LeasesCache:
         # assign to each mac address corresponding ipv6 address `/var/run/pakon/neigh.cache`
         neighs = LeasesCache._load_neighs()
         for mac, ipv6 in neighs.items():
-            current = self.mac_mapping.get(mac, {"ipv6":[]}).get("ipv6",[]) # do not override other addresses
+            current = self.mac_mapping.get(mac, {"ipv6": []}).get(
+                "ipv6", []
+            )  # do not override other addresses
             if mac in self.mac_mapping.keys():  # mac is already in ipv4 leases
                 self.mac_mapping[mac]["ipv6"] = [*current, ipv6]
             else:

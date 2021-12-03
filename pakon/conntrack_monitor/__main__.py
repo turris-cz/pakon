@@ -1,4 +1,3 @@
-
 import sys
 import traceback
 import re
@@ -15,17 +14,21 @@ from pakon.conntrack_monitor import logger
 
 from pakon.dns_cache.database import Dns
 
-_MAC_ADDRESS = re.compile(r'^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$')
+_MAC_ADDRESS = re.compile(r"^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$")
 
 
 _CONNTRACK_WATCH = ["/usr/bin/conntrack-watch", "-se"]
 
 
-def _log_flow_action(flow: Flow, action: str, custom_id: str = None, level: str="info"):
+def _log_flow_action(
+    flow: Flow, action: str, custom_id: str = None, level: str = "info"
+):
     """Helper function to format log"""
     _logging_action = getattr(logger, level)
     _id = custom_id if custom_id else f"flow_id: {flow.flow_id}"
-    _logging_action(f"[{action}] {flow.src_mac} to {flow.dest_ip} @ {flow.proto}, {_id}")
+    _logging_action(
+        f"[{action}] {flow.src_mac} to {flow.dest_ip} @ {flow.proto}, {_id}"
+    )
 
 
 def _save_filtered(f: Flow, *args):
@@ -80,8 +83,12 @@ if __name__ == "__main__":
                                 p.root.flow.reply.counters.packets.value
                             )
                             flow.bytes_sent += p.root.flow.reply.counters.bytes.value
-                            log_args = [" updating ^ ", "flow_id: " + f"{old_id}->{new_id}" if log_new
-                                else old_id,]
+                            log_args = [
+                                " updating ^ ",
+                                "flow_id: " + f"{old_id}->{new_id}"
+                                if log_new
+                                else old_id,
+                            ]
 
                         else:
                             # flow has not existed (we started to capture when the flow already existed)
@@ -91,14 +98,16 @@ if __name__ == "__main__":
                             flow.bytes_recvd = p.root.flow.original.counters.bytes.value
                             flow.packets_sent = p.root.flow.reply.counters.packets.value
                             flow.bytes_sent = p.root.flow.reply.counters.bytes.value
-                            log_args = ["counters + "] # action type
+                            log_args = ["counters + "]  # action type
 
                         _save_filtered(flow, *log_args)
                     if counter >= 126:
                         ret = Flow.retention_apply(5)
                         if isinstance(ret, list):
                             for flow_to_delete in ret:
-                                _log_flow_action(flow_to_delete, "dropping v ", level="debug")
+                                _log_flow_action(
+                                    flow_to_delete, "dropping v ", level="debug"
+                                )
                         counter = 0
                     counter += 1
 
@@ -111,5 +120,7 @@ if __name__ == "__main__":
 
         except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            logger.error(f"error: {e} on line {line}, Traceback: {traceback.extract_tb(exc_traceback)}")
+            logger.error(
+                f"error: {e} on line {line}, Traceback: {traceback.extract_tb(exc_traceback)}"
+            )
             sys.exit(1)

@@ -1,4 +1,3 @@
-
 from re import I
 from typing import Union, TypeVar, Tuple, List
 from datetime import datetime, timedelta
@@ -27,11 +26,14 @@ db = SqliteDatabase("/var/lib/conntrack_debug.db")
 
 FlowType = TypeVar("FlowType", bound="Flow")
 
+
 class __BaseModel(Model):
     class Meta:
         database = db
 
+
 _LEASES_CACHE = LeasesCache()
+
 
 class Flow(__BaseModel):
     id = PrimaryKeyField()
@@ -49,11 +51,12 @@ class Flow(__BaseModel):
     bytes_sent = IntegerField(default=0)
     used = DateTimeField(default=datetime.now)
 
-
     @staticmethod
     def translate(obj):
         _ip = obj.layer3.src.value
-        return _LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get("mac") # if not found, return the ip at least
+        return _LEASES_CACHE.ip_mapping.get(_ip, {"mac": _ip}).get(
+            "mac"
+        )  # if not found, return the ip at least
 
     @classmethod
     def get_filter_original_or_create(
@@ -94,10 +97,10 @@ class Flow(__BaseModel):
     def retention_apply(cls: FlowType, minutes: int = 10) -> Union[int, List]:
         """Delete records older than n minutes having no flow."""
         dead_flows = cls.select().where(
-                cls.used < datetime.now() - timedelta(minutes=minutes),
-                cls.bytes_sent == 0,
-                cls.bytes_recvd == 0,
-            )
+            cls.used < datetime.now() - timedelta(minutes=minutes),
+            cls.bytes_sent == 0,
+            cls.bytes_recvd == 0,
+        )
         _LEASES_CACHE.update_data()
         if logger.level == DEBUG:
             ret = []

@@ -1,5 +1,5 @@
 from xmlschema import validate as _validate, XMLSchema 
-from pakon.config import Config
+from pakon import Config
 
 
 _SCHEMA_PATH = Config.PROJECT_ROOT / "schema/flow_new_destroy.xsd"

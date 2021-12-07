@@ -1,7 +1,7 @@
 import subprocess
 import json
 
-from pakon.config import Config
+from pakon import Config
 
 
 class Objson:  # json -> object

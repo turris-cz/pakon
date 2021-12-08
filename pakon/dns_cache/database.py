@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from typing import TypeVar, Tuple, Optional
 
-from pakon.dns_cache.utils import LeasesCache, Objson
+from pakon.dns_cache.utils import LeasesCache, Objson, AliasMapping
 from pakon.dns_cache import logger
 
 _LEASES_CACHE = LeasesCache()
+_ALIAS_MAPPING = AliasMapping()
 
 from peewee import (
     Model,
@@ -87,14 +88,14 @@ class Dns(__BaseModel):
             _ssl = entry.ssl
             client_ip = _ssl.client_ip
             server_ip = _ssl.server_ip
-            name = _ssl.name
+            name = _ALIAS_MAPPING.get(_ssl.name)
             is_ssl = True
         else:
             # handle dns
             _dns = entry.dns
             client_ip = _dns.client_ip
             server_ip = _dns.server_ip
-            name = _dns.name
+            name = _ALIAS_MAPPING.get(_dns.name)
         client = Client().select_or_create(client_ip)
         log = client.save()
 

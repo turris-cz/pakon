@@ -1,8 +1,15 @@
+from functools import partial
+from pathlib import Path
 import subprocess
 import json
+import re
+
+from xmlschema import aliases
 
 from pakon import Config
+from pakon.dns_cache import logger
 
+ALIAS_PATH = Path("usr", "share", "pakon-light", "domains_replace", "alias.json")
 
 class Objson:  # json -> object
     """Dict structure to Object with attributes, used for handle dhcp traffic data."""
@@ -94,3 +101,25 @@ class LeasesCache:
                 self.mac_mapping[mac] = {"ipv6": [ipv6]}
         # than generate maping with `ip` addresses as keys
         self.__generate_ip_mapping()
+
+
+class AliasMapping:
+    def __init__(self):
+        self.data = {}
+        try:
+            with open(str(Config.ROOT_PATH / ALIAS_PATH), "r") as f:
+                self.data = json.load(f)
+        except Exception as e:
+            logger.info(f"file: {str(ALIAS_PATH)} does not exist")
+        if self.data:
+            aliases = []
+            for li in self.data.values():
+                aliases.extend(li)
+            self.rx_string = re.compile(f"^.*({'|'.join(map(re.escape,aliases))}).*$")
+
+    def get(self, lng): # long URI path:
+        if self.__dict__.keys() == {"data", "rx_string"}:
+            match = self.rx_string.match(lng)[0]
+            if match:
+                return [key for key, value in self.data.items() if match in value][0]
+        return lng

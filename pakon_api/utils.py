@@ -2,7 +2,7 @@ import json
 import time
 import datetime
 
-from pakon.config import Config
+from pakon import Config
 from subprocess import Popen, PIPE
 
 _PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]

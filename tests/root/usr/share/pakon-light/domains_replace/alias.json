@@ -1,0 +1,198 @@
+{
+  "amazon.com": [
+    "amazon.com",
+    "images-amazon.com",
+    "amazon-adsystem.com"
+  ],
+  "itunes.apple.com": [
+    "itunes.apple.com"
+  ],
+  "ls.apple.com": [
+    "ls.apple.com"
+  ],
+  "push.apple.com": [
+    "push.apple.com"
+  ],
+  "icloud.com": [
+    "icloud.com"
+  ],
+  "mail.me.com": [
+    "mail.me.com"
+  ],
+  "discordapp.com": [
+    "discord.com",
+    ".discordapp.com"
+  ],
+  "dropbox.com": [
+    ".dropbox.com",
+    "dropboxstatic.com",
+    "dropboxusercontent.com",
+    "dropboxapi.com",
+    "db.tt"
+  ],
+  "ebay.com": [
+    "ebaystatic.com",
+    "ebayimg.com",
+    "ebaydesc.com"
+  ],
+  "grammarly.com": [
+    ".grammarly.com",
+    "grammarly.io"
+  ],
+  "facebook.com": [
+    "facebook.com",
+    "fbstatic-a.akamaihd.net",
+    "fbcdn.net",
+    "fbcdn-",
+    "facebook.net",
+    "fbsbx.com"
+  ],
+  "messenger.com": [
+    "messenger.com"
+  ],
+  "github.com": [
+    "github.com",
+    "githubusercontent.com",
+    "github.githubassets.com"
+  ],
+  "github.io": [
+    "github.io"
+  ],
+  "google.com": [
+    ".google.",
+    "goo.gl",
+    ".gstatic.com",
+    ".googlesyndication.com",
+    ".googletagservices.com",
+    ".2mdn.net",
+    ".doubleclick.net",
+    "googleads.",
+    "google-analytics.",
+    "googleusercontent.",
+    "ggpht.com",
+    "googleadservices."
+  ],
+  "horizon.tv": [
+    ".horizon.tv"
+  ],
+  "instagram.com": [
+    "instagram.com",
+    "cdninstagram.com"
+  ],
+  "linkedin.com": [
+    "linkedin.com",
+    "licdn.com"
+  ],
+  "storage.live.com": [
+    "storage.live.com",
+    "livefilestore.com"
+  ],
+  "office.live.com": [
+    "office.live.com"
+  ],
+  "microsoft.com": [
+    "windowsupdate.com",
+    "microsoft.com",
+    "windows.net",
+    "s-microsoft.com",
+    "wns.windows.com",
+    "gfx.ms",
+    "onestore.ms"
+  ],
+  "netflix.com": [
+    "netflix.com",
+    "nflxvideo.net",
+    "nflximg.net",
+    "nflximg.com",
+    "nflxext.com"
+  ],
+  "quora.com": [
+    "quora.com",
+    "quoracdn.net"
+  ],
+  "reddit.com": [
+    "reddit.com",
+    "redditstatic.com",
+    "redditmedia.com",
+    "redd.it"
+  ],
+  "seznam.cz": [
+    "seznam.cz",
+    "szn.cz"
+  ],
+  "skype.com": [
+    "skype.com",
+    "skypeassets.com",
+    "messenger.live.com"
+  ],
+  "snapchat.com": [
+    "snapchat.com",
+    "snapads.com",
+    "feelinsonice.com",
+    "feelinsonice-hrd.appspot.com",
+    "feelinsonice.appspot.com"
+  ],
+  "soundcloud.com": [
+    "soundcloud.com",
+    "sndcdn.com"
+  ],
+  "speedtest.net": [
+    ".speedtest.net"
+  ],
+  "spotify.com": [
+    "spotify.com",
+    "scdn.co",
+    "sp-bootstrap.global.ssl.fastly.net",
+    "d2d1dxiu3v1f2i.cloudfront.net",
+    "audio-akp-spotify-com"
+  ],
+  "steampowered.com": [
+    "steampowered.com",
+    "steamcontent.com",
+    "steamstatic.com",
+    "steampipe.akamaized.net"
+  ],
+  "telegram.org": [
+    "telegram.org"
+  ],
+  "twitch.tv": [
+    "twitch.tv",
+    "twitchsvc.net",
+    "twitchcdn.net",
+    "ttvnw.net",
+    "jtvnw.net"
+  ],
+  "twitter.com": [
+    "twttr.com",
+    "twitter.",
+    "twimg.com"
+  ],
+  "viber.com": [
+    "viber.com"
+  ],
+  "vimeo.com": [
+    "vimeo.com",
+    "vimeocdn.com"
+  ],
+  "vk.com": [
+    "vk.com",
+    "vk.me"
+  ],
+  "whatsapp.com": [
+    "whatsapp."
+  ],
+  "wikipedia.org": [
+    "wikipedia.",
+    "wikimedia.",
+    "wikimediafoundation."
+  ],
+  "youtube.com": [
+    "youtube.",
+    "youtu.be.",
+    "yt3.ggpht.com",
+    ".googlevideo.com",
+    "gvt1.com",
+    ".ytimg.com",
+    "youtube-nocookie."
+  ]
+}

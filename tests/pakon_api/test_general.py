@@ -1,8 +1,8 @@
 import pytest
-from pakon.config import Config
+from pakon import Config
 
 
-from pakon.utils import load_leases, load_neighs
+from pakon.dns_cache.utils import LeasesCache, AliasMapping
 
 
 def test_path():
@@ -10,11 +10,16 @@ def test_path():
 
 
 def test_neighbours():
-    neighbours_map = load_neighs()
-    assert neighbours_map["79f7:88ad:823c:9cf::cc3"] == "82:4a:1a:a0:3b:c5"
+    neighbours_map = LeasesCache._load_neighs()
+    assert neighbours_map["82:4a:1a:a0:3b:c5"] == "79f7:88ad:823c:9cf::cc3"
 
 
 def test_leases():
-    leases = load_leases()
-    assert leases["192.168.1.218"]["mac"] == "40:e6:57:23:97:2c"
-    _ = leases
+    leases = LeasesCache()
+    assert leases.ip_mapping["192.168.1.218"]["mac"] == "40:e6:57:23:97:2c"
+    assert leases.mac_mapping["ff:68:00:22:18:8c"]["hostname"] == "Lenovo-G580"
+
+def test_aliases():
+    m = AliasMapping()
+    breakpoint()
+    _ = m

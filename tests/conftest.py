@@ -2,13 +2,9 @@ import json
 import pytest
 
 from unittest.mock import Mock, patch
-from pathlib import Path
 import pakon
 from pakon_api import create_app
-from pakon.config import Config
-
-from pathlib import Path
-# import tempfile
+from pakon import Config
 
 
 def _get_result():

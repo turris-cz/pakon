@@ -21,5 +21,5 @@ def test_leases():
 
 def test_aliases():
     m = AliasMapping()
-    breakpoint()
-    _ = m
+    mic = m.get("something.at.github.com")
+    assert mic == "github.com"

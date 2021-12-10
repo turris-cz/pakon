@@ -33,10 +33,11 @@ class __BaseModel(Model):
 
     @classmethod
     def retention_apply(cls, minutes):
-        res = cls.delete().where(
+        qry = cls.delete().where(
             cls.used < datetime.now() - timedelta(minutes=minutes),
         )
-        logger.info(f'deleted {res} records from "{cls._meta.table_name}"')
+        ret = qry.execute()
+        logger.info(f'deleted {ret} records from "{cls._meta.table_name}"')
 
 
 class Client(__BaseModel):

@@ -40,7 +40,7 @@ class Flow(__BaseModel):
     # xml = BlobField()  # debug data, remove in production
     flow_id = BigIntegerField()
     proto = TextField()
-    src_mac = TextField()
+    src_mac = TextField(null=True)
     dest_ip = TextField()
     dest_name = TextField(null=True)
     # src_port = IntegerField(null=True)
@@ -96,6 +96,7 @@ class Flow(__BaseModel):
     @classmethod
     def retention_apply(cls: FlowType, minutes: int = 10) -> Union[int, List]:
         """Delete records older than n minutes having no flow."""
+        # TODO: implement more options to apply retention (count of items in database etc.)
         dead_flows = cls.select().where(
             cls.used < datetime.now() - timedelta(minutes=minutes),
             cls.bytes_sent == 0,

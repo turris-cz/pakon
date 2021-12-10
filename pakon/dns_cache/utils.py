@@ -1,4 +1,5 @@
 from functools import partial
+from logging import log
 from pathlib import Path
 import subprocess
 import json
@@ -71,11 +72,15 @@ class LeasesCache:
     def _load_neighs():
         """Obtain mac address for ipv6 address using `/etc/hotplug.d/neigh/pakon-neigh.sh`"""
         addresses = {}
-        with open(str(Config.ROOT_PATH / "var" / "run" / "pakon" / "neigh.cache")) as f:
-            for line in f.readlines():
-                v, k = line.strip().split(",")
-                if v.find(":") > 0:  # dirty filter only ipv6
-                    addresses[k] = v
+        try:
+            FILE  = Path("var", "run", "pakon", "neigh.cache")
+            with open(str(Config.ROOT_PATH / FILE)) as f:
+                for line in f.readlines():
+                    v, k = line.strip().split(",")
+                    if v.find(":") > 0:  # dirty filter only ipv6
+                        addresses[k] = v
+        except Exception as e:
+            logger.error(f"Failed to load {str(FILE)}")
         return addresses
 
     def __init__(self):
@@ -119,7 +124,8 @@ class AliasMapping:
 
     def get(self, lng): # long URI path:
         if self.__dict__.keys() == {"data", "rx_string"}:
-            match = self.rx_string.match(lng)[0]
-            if match:
-                return [key for key, value in self.data.items() if match in value][0]
+            logger.debug(f"long string = {lng}")
+            match = self.rx_string.match(lng)
+            if match is not None:
+                return [key for key, value in self.data.items() if match.group(1) in value][0]
         return lng

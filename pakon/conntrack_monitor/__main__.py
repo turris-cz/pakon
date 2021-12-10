@@ -33,10 +33,11 @@ def _log_flow_action(
 
 def _save_filtered(f: Flow, *args):
     if bool(_MAC_ADDRESS.match(f.src_mac)):
-        f.save()
         _log_flow_action(flow, *args)
     else:
+        f.src_mac = None
         _log_flow_action(flow, " no-mac >> ")
+    f.save()
 
 
 if __name__ == "__main__":

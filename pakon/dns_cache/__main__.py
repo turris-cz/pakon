@@ -38,7 +38,7 @@ def main():
         except Exception as e:
             _, _, exc_traceback = sys.exc_info()
             logger.error(
-                f"Error: {e}, Traceback: {repr(traceback.extract_tb(exc_traceback))}"
+                f"Error: {e}, Traceback: {repr(traceback.extract_tb(exc_traceback))}, line {line}"
             )
 
 

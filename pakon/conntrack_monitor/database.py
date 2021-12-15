@@ -13,7 +13,6 @@ from peewee import (
     DoesNotExist,
     IntegerField,
     Model,
-    # BlobField,
     PrimaryKeyField,
     SqliteDatabase,
     TextField,
@@ -37,13 +36,11 @@ _LEASES_CACHE = LeasesCache()
 
 class Flow(__BaseModel):
     id = PrimaryKeyField()
-    # xml = BlobField()  # debug data, remove in production
     flow_id = BigIntegerField()
     proto = TextField()
     src_mac = TextField(null=True)
     dest_ip = TextField()
     dest_name = TextField(null=True)
-    # src_port = IntegerField(null=True)
     dest_port = IntegerField(null=True)
     packets_recvd = IntegerField(default=0)
     bytes_recvd = IntegerField(default=0)

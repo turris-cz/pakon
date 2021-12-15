@@ -12,7 +12,6 @@ from peewee import (
     BooleanField,
     DoesNotExist,
     ForeignKeyField,
-    IntegerField,
     PrimaryKeyField,
     SqliteDatabase,
     TextField,

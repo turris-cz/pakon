@@ -20,9 +20,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "pakon-maintain = pakon.maintain.__main__:main",
-            "pakon-handler = pakon.query_socket.__main__:main",  # we may drop exposure here and link the
-            "pakon-monitor = pakon.monitor.__main__:main",  # service to the python library instead
+            "dns-cache = pakon.dns_cache.__main__:main",
+            "pakon-monitor = pakon.conntrack_monitor.__main__:main",
             "pakon-show = pakon.show.__main__:main",
         ]
     },

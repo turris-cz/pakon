@@ -58,9 +58,8 @@ def test_dictify():
 
 
 def test_validation_error():
+
     with pytest.raises(XMLSchemaValidationError) as e:
         res = validate_xml(FLOW5)
-    assert (
-        str(e.value)
-        == "failed validating 'icmp' with XsdEnumerationFacets(['tcp', 'udp']):\n\nReason: attribute protoname='icmp': value must be one of ['tcp', 'udp']\n\nSchema:\n\n  <xs:enumeration xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" value=\"tcp\" />\n\nInstance:\n\n  <layer4 protonum=\"1\" protoname=\"icmp\" />\n\nPath: /flow/meta[1]/layer4\n"
-    )
+    breakpoint()
+    assert e.value.reason == "attribute protoname='icmp': value must be one of ['tcp', 'udp']"

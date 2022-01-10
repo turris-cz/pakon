@@ -18,7 +18,7 @@ setup(
         "pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git",
         "flask",
         "jsonschema",
-        "xmlschema"
+        "xmlschema>=1.9.2"
     ],
     entry_points={
         "console_scripts": [

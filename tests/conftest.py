@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import pytest
 
 from unittest.mock import Mock, patch
@@ -6,6 +7,9 @@ import pakon
 from pakon_api import create_app
 from pakon import Config
 
+import shutil
+
+TEST_ROOT = Path("/tmp/pakon_root")
 
 def _get_result():
     """Gets raw string"""
@@ -22,9 +26,14 @@ def pytest_configure():
 def mock_root_path(monkeypatch):
     # def mockreturn():
     #     return Path(, "")
+    shutil.rmtree(TEST_ROOT, ignore_errors=True)
+    shutil.copytree("tests/root", TEST_ROOT)
+
     with monkeypatch.context() as m:
-        m.setattr(pakon.Config, "ROOT_PATH", Config.PROJECT_ROOT / "tests" / "root")
+        m.setattr(pakon.Config, "ROOT_PATH", Path(TEST_ROOT))
         yield
+
+    shutil.rmtree(TEST_ROOT, ignore_errors=True)
 
 
 @pytest.fixture(scope="function")

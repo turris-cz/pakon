@@ -1,0 +1,3 @@
+include pakon/schema/flow_new_destroy.xsd
+include pakon/schema/pakon_query.json
+include-recursive tests/root/*

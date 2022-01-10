@@ -1,3 +1,4 @@
+from pathlib import Path
 import pytest
 from pakon import Config
 
@@ -6,8 +7,7 @@ from pakon.dns_cache.utils import LeasesCache, AliasMapping
 
 
 def test_path():
-    assert Config.ROOT_PATH == Config.PROJECT_ROOT / "tests" / "root"
-
+    assert Config.ROOT_PATH == Path("/tmp/pakon_root")
 
 def test_neighbours():
     neighbours_map = LeasesCache._load_neighs()

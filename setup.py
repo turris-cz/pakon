@@ -10,6 +10,7 @@ setup(
     packages=find_packages(),
     url="https://gitlab.nic.cz/turris/pakon",
     license="GPL-3.0-only",
+    include_package_data=True,
     description="Pakon is a system for monitoring network traffic",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -17,6 +18,7 @@ setup(
         "pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git",
         "flask",
         "jsonschema",
+        "xmlschema"
     ],
     entry_points={
         "console_scripts": [

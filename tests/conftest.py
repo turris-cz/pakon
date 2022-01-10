@@ -51,7 +51,6 @@ def app():
 
 
 @pytest.fixture(scope="function")
-
 def client(app):
     """Fixture to wrap flask client. Provides test function access to api and
     wraps client in correct app_context."""

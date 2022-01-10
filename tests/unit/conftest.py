@@ -124,7 +124,7 @@ FLOW4 = """<flow type="destroy">
     </meta>
 </flow>"""
 
-FLOW5="""<flow type="new">
+FLOW5 = """<flow type="new">
     <meta direction="original">
         <layer3 protonum="2" protoname="ipv4">
             <src>192.168.168.250</src>

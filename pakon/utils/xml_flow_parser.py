@@ -5,15 +5,12 @@ import json
 
 __all__ = ["Parser"]
 
-_MAP_ATTRIBUITES = { # map attributes of an element to be key in parent element
+_MAP_ATTRIBUITES = {  # map attributes of an element to be key in parent element
     "meta": "direction"  # in element "meta" make the attribute "direction" value key of parent
 }
 
-_DEFAULTS = {
-    "unreplied": "",
-    "assured": "",
-    "replied": ""
-}
+_DEFAULTS = {"unreplied": "", "assured": "", "replied": ""}
+
 
 def _cast_to_int(val):
     """Try to cast value to <int>, return string otherwise."""
@@ -25,6 +22,7 @@ def _cast_to_int(val):
 
 class Array(list):
     """Helper class that enables to call ``dump()`` onto its elements."""
+
     def __init__(self, li) -> None:
         super().__init__(li)  # Non empty!
 
@@ -34,8 +32,7 @@ class Array(list):
 
 class Element:
     """XML element basic class.
-    It has ability to dump its structure to dictionary.
-"""
+    It has ability to dump its structure to dictionary."""
 
     def __init__(self, parent, name="", attrs=None, def_val=None) -> None:
         self.name = name
@@ -58,7 +55,7 @@ class Element:
 
     def dump(self):
         """Output json like structure."""
-        if self.value or self.value == 0 or self.value == '':
+        if self.value or self.value == 0 or self.value == "":
             return self.value
         else:
             retval = {key: val.dump() for key, val in self.children.items()}
@@ -103,7 +100,7 @@ class Element:
 
         if self.children:
             for k, v in self.children.items():
-                if isinstance(v, Array): # handle meta specifically
+                if isinstance(v, Array):  # handle meta specifically
                     if v[0].name in _MAP_ATTRIBUITES.keys():
                         for i in v:
                             self.__setattr__(getattr(i, _MAP_ATTRIBUITES[i.name]), i)
@@ -137,20 +134,19 @@ class FlowHandler(ContentHandler):
             self.current.value, self.value_type = _cast_to_int(_content)
 
 
-class Parser():
+class Parser:
     """Class to help parse the xml, holds the parsing process result."""
 
     def __init__(self):
         self.root = Element(None, "XML")  # essantial class that is exposed to user
-    
+
     def parse(self, xmlstring):
         parseString(xmlstring, FlowHandler(self.root))
         self.root.set_children_as_attributes()  # make flow the attribute of root
 
     def jsonify(self, indent=2):
         return json.dumps(self.root.dump(), indent=indent)
-    
+
     def dictify(self):
         """Consider having object structure vs bare ``dict``."""
         return self.root.dump()
-

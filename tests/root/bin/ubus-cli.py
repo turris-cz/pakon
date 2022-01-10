@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 import json
 
-DHCP_DATA="""{
+DHCP_DATA = """{
     "device": {
         "br-lan": {
             "leases": [
@@ -85,6 +85,7 @@ DHCP_DATA="""{
     }
 }"""
 
+
 def main():
     parser = ArgumentParser(prog="ubus")
     parser.add_argument("command")
@@ -102,7 +103,6 @@ def main():
 
     if args.method != "ipv6leases":
         print({})
-
 
     print(DHCP_DATA)
 

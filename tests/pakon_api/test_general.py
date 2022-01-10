@@ -19,6 +19,7 @@ def test_leases():
     assert leases.ip_mapping["192.168.1.218"]["mac"] == "40:e6:57:23:97:2c"
     assert leases.mac_mapping["ff:68:00:22:18:8c"]["hostname"] == "Lenovo-G580"
 
+
 def test_aliases():
     m = AliasMapping()
     mic = m.get("something.at.github.com")

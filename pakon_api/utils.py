@@ -39,6 +39,6 @@ def json_query(query):
 def load_schema():
     """Helper function to load query schema"""
     rv = {}
-    with open(str(Config.PROJECT_ROOT / "schema" / "pakon_query.json"), "r") as f:
+    with open(str(Config.PROJECT_ROOT / "pakon" / "schema" / "pakon_query.json"), "r") as f:
         rv = json.load(f)
     return rv

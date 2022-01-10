@@ -51,14 +51,16 @@ def test_dictify():
     """Testing Parser ability to make dictionary of result."""
     xml = Parser()
     xml.parse(FLOW1)
-    flow_dict = xml.dictify()['flow']
-    assert {"meta","type"} == set(flow_dict.keys())
+    flow_dict = xml.dictify()["flow"]
+    assert {"meta", "type"} == set(flow_dict.keys())
     meta0_layer3 = flow_dict["meta"][0]["layer3"]
-    assert {"src","dst","protonum","protoname"} == set(meta0_layer3.keys())
+    assert {"src", "dst", "protonum", "protoname"} == set(meta0_layer3.keys())
 
 
 def test_validation_error():
     with pytest.raises(XMLSchemaValidationError) as e:
         res = validate_xml(FLOW5)
-    assert str(e.value) == 'failed validating \'icmp\' with XsdEnumerationFacets([\'tcp\', \'udp\']):\n\nReason: attribute protoname=\'icmp\': value must be one of [\'tcp\', \'udp\']\n\nSchema:\n\n  <xs:enumeration xmlns:xs="http://www.w3.org/2001/XMLSchema" value="tcp" />\n\nInstance:\n\n  <layer4 protonum="1" protoname="icmp" />\n\nPath: /flow/meta[1]/layer4\n'
-    
+    assert (
+        str(e.value)
+        == "failed validating 'icmp' with XsdEnumerationFacets(['tcp', 'udp']):\n\nReason: attribute protoname='icmp': value must be one of ['tcp', 'udp']\n\nSchema:\n\n  <xs:enumeration xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" value=\"tcp\" />\n\nInstance:\n\n  <layer4 protonum=\"1\" protoname=\"icmp\" />\n\nPath: /flow/meta[1]/layer4\n"
+    )

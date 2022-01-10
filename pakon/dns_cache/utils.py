@@ -12,6 +12,7 @@ from pakon.dns_cache import logger
 
 ALIAS_PATH = Path("usr", "share", "pakon-light", "domains_replace", "alias.json")
 
+
 class Objson:  # json -> object
     """Dict structure to Object with attributes, used for handle dhcp traffic data."""
 
@@ -73,7 +74,7 @@ class LeasesCache:
         """Obtain mac address for ipv6 address using `/etc/hotplug.d/neigh/pakon-neigh.sh`"""
         addresses = {}
         try:
-            FILE  = Path("var", "run", "pakon", "neigh.cache")
+            FILE = Path("var", "run", "pakon", "neigh.cache")
             with open(str(Config.ROOT_PATH / FILE)) as f:
                 for line in f.readlines():
                     v, k = line.strip().split(",")
@@ -122,10 +123,12 @@ class AliasMapping:
                 aliases.extend(li)
             self.rx_string = re.compile(f"^.*({'|'.join(map(re.escape,aliases))}).*$")
 
-    def get(self, lng): # long URI path:
+    def get(self, lng):  # long URI path:
         if self.__dict__.keys() == {"data", "rx_string"}:
             logger.debug(f"long string = {lng}")
             match = self.rx_string.match(lng)
             if match is not None:
-                return [key for key, value in self.data.items() if match.group(1) in value][0]
+                return [
+                    key for key, value in self.data.items() if match.group(1) in value
+                ][0]
         return lng

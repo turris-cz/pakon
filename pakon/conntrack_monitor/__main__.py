@@ -12,8 +12,6 @@ from pakon.utils.validation import validate_xml
 from pakon.conntrack_monitor.database import Flow
 from pakon.conntrack_monitor import logger
 
-from pakon.dns_cache.database import Dns
-
 _MAC_ADDRESS = re.compile(r"^(?:[a-f0-9]{2}:){5}[a-f0-9]{2}$")
 
 
@@ -115,8 +113,8 @@ def main():
                 except XMLSchemaValidationError as e:
                     logger.info(f"[ ignoring >> ] {line}, Validation error: {e}")
 
-        except KeyboardInterrupt as e:
-            logger.info(f"Exited gracefully: 0")
+        except KeyboardInterrupt:
+            logger.info("Exited gracefully: 0")
             sys.exit(0)
 
         except Exception as e:

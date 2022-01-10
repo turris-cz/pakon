@@ -1,5 +1,3 @@
-import json
-
 from typing import Iterable, List, Union
 from euci import EUci, UciExceptionNotFound
 

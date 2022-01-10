@@ -148,34 +148,67 @@ FLOW5 = """<flow type="new">
 
 
 FLOW6 = """<flow type="destroy">
-	<meta direction="original">
-		<layer3 protonum="2" protoname="ipv4">
-			<src>192.168.168.250</src>
-			<dst>216.58.201.78</dst>
-		</layer3>
-		<layer4 protonum="1" protoname="icmp"></layer4>
-		<counters>
-			<packets>5</packets>
-			<bytes>420</bytes>
-		</counters>
-	</meta>
-	<meta direction="reply">
-		<layer3 protonum="2" protoname="ipv4">
-			<src>216.58.201.78</src>
-			<dst>192.168.168.250</dst>
-		</layer3>
-		<layer4 protonum="1" protoname="icmp"></layer4>
-		<counters>
-			<packets>5</packets>
-			<bytes>420</bytes>
-		</counters>
-	</meta>
-	<meta direction="independent">
-		<id>2350446838</id>
-	</meta>
+  <meta direction="original">
+    <layer3 protonum="2" protoname="ipv4">
+      <src>192.168.168.250</src>
+      <dst>216.58.201.78</dst>
+    </layer3>
+    <layer4 protonum="1" protoname="icmp"></layer4>
+    <counters>
+      <packets>5</packets>
+      <bytes>420</bytes>
+    </counters>
+  </meta>
+  <meta direction="reply">
+    <layer3 protonum="2" protoname="ipv4">
+      <src>216.58.201.78</src>
+      <dst>192.168.168.250</dst>
+    </layer3>
+    <layer4 protonum="1" protoname="icmp"></layer4>
+    <counters>
+      <packets>5</packets>
+      <bytes>420</bytes>
+    </counters>
+  </meta>
+  <meta direction="independent">
+    <id>2350446838</id>
+  </meta>
 </flow>"""
 
-FLOW7 = """<flow type="destroy"><meta direction="original"><layer3 protonum="2" protoname="ipv4"><src>10.0.0.139</src><dst>52.98.152.178</dst></layer3><layer4 protonum="6" protoname="tcp"><sport>57812</sport><dport>443</dport></layer4><counters><packets>10</packets><bytes>1140</bytes></counters></meta><meta direction="reply"><layer3 protonum="2" protoname="ipv4"><src>52.98.152.178</src><dst>192.168.168.250</dst></layer3><layer4 protonum="6" protoname="tcp"><sport>443</sport><dport>57812</dport></layer4><counters><packets>6</packets><bytes>2409</bytes></counters></meta><meta direction="independent"><id>439469702</id><assured/></meta></flow>"""
+FLOW7 = """<flow type="destroy">
+  <meta direction="original">
+    <layer3 protonum="2" protoname="ipv4">
+      <src>10.0.0.139</src>
+      <dst>52.98.152.178</dst>
+    </layer3>
+    <layer4 protonum="6" protoname="tcp">
+      <sport>57812</sport>
+      <dport>443</dport>
+    </layer4>
+    <counters>
+      <packets>10</packets>
+      <bytes>1140</bytes>
+    </counters>
+  </meta>
+  <meta direction="reply">
+    <layer3 protonum="2" protoname="ipv4">
+      <src>52.98.152.178</src>
+      <dst>192.168.168.250</dst>
+    </layer3>
+    <layer4 protonum="6" protoname="tcp">
+      <sport>443</sport>
+      <dport>57812</dport>
+    </layer4>
+    <counters>
+      <packets>6</packets>
+      <bytes>2409</bytes>
+    </counters>
+  </meta>
+  <meta direction="independent">
+    <id>439469702</id>
+    <assured/>
+  </meta>
+</flow>"""
 
 JSON1 = """{
   "flow": {

@@ -1,4 +1,3 @@
-from re import I
 from typing import Union, TypeVar, Tuple, List
 from datetime import datetime, timedelta
 from pakon.dns_cache.database import Dns

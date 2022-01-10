@@ -1,11 +1,8 @@
-from functools import partial
-from logging import log
 from pathlib import Path
 import subprocess
 import json
 import re
 
-from xmlschema import aliases
 
 from pakon import Config
 from pakon.dns_cache import logger
@@ -81,7 +78,7 @@ class LeasesCache:
                     if v.find(":") > 0:  # dirty filter only ipv6
                         addresses[k] = v
         except Exception as e:
-            logger.error(f"Failed to load {str(FILE)}")
+            logger.error(f"Failed to load {str(FILE)}, error: {e.value}")
         return addresses
 
     def __init__(self):
@@ -116,7 +113,7 @@ class AliasMapping:
             with open(str(Config.ROOT_PATH / ALIAS_PATH), "r") as f:
                 self.data = json.load(f)
         except Exception as e:
-            logger.info(f"file: {str(ALIAS_PATH)} does not exist")
+            logger.info(f"file: {str(ALIAS_PATH)} does not exist, error: {e.value}")
         if self.data:
             aliases = []
             for li in self.data.values():

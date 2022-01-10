@@ -3,7 +3,6 @@ import time
 import datetime
 
 from pakon import Config
-from subprocess import Popen, PIPE
 
 _PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]
 
@@ -39,6 +38,8 @@ def json_query(query):
 def load_schema():
     """Helper function to load query schema"""
     rv = {}
-    with open(str(Config.PROJECT_ROOT / "pakon" / "schema" / "pakon_query.json"), "r") as f:
+    with open(
+        str(Config.PROJECT_ROOT / "pakon" / "schema" / "pakon_query.json"), "r"
+    ) as f:
         rv = json.load(f)
     return rv

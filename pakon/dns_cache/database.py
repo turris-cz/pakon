@@ -4,9 +4,6 @@ from typing import TypeVar, Tuple, Optional
 from pakon.dns_cache.utils import LeasesCache, Objson, AliasMapping
 from pakon.dns_cache import logger
 
-_LEASES_CACHE = LeasesCache()
-_ALIAS_MAPPING = AliasMapping()
-
 from peewee import (
     Model,
     BooleanField,
@@ -17,6 +14,9 @@ from peewee import (
     TextField,
     DateTimeField,
 )
+
+_LEASES_CACHE = LeasesCache()
+_ALIAS_MAPPING = AliasMapping()
 
 db = SqliteDatabase("/var/lib/dns_cache.db")
 
@@ -97,7 +97,7 @@ class Dns(__BaseModel):
             server_ip = _dns.server_ip
             name = _ALIAS_MAPPING.get(_dns.name)
         client = Client().select_or_create(client_ip)
-        log = client.save()
+        # log = client.save() TODO: log save action
 
         try:  # filter out duplicates
             record = (

@@ -9,6 +9,7 @@ from pakon.dns_cache.utils import LeasesCache, AliasMapping
 def test_path():
     assert Config.ROOT_PATH == Path("/tmp/pakon_root")
 
+
 def test_neighbours():
     neighbours_map = LeasesCache._load_neighs()
     assert neighbours_map["82:4a:1a:a0:3b:c5"] == "79f7:88ad:823c:9cf::cc3"

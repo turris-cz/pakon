@@ -11,6 +11,7 @@ import shutil
 
 TEST_ROOT = Path("/tmp/pakon_root")
 
+
 def _get_result():
     """Gets raw string"""
     with open("tests/test_result.json", "r") as f:

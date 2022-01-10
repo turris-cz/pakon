@@ -60,6 +60,8 @@ def test_dictify():
 def test_validation_error():
 
     with pytest.raises(XMLSchemaValidationError) as e:
-        res = validate_xml(FLOW5)
-    breakpoint()
-    assert e.value.reason == "attribute protoname='icmp': value must be one of ['tcp', 'udp']"
+        validate_xml(FLOW5)
+    assert (
+        e.value.reason
+        == "attribute protoname='icmp': value must be one of ['tcp', 'udp']"
+    )

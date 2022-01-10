@@ -33,14 +33,14 @@ def _log_flow_action(
 
 def _save_filtered(f: Flow, *args):
     if bool(_MAC_ADDRESS.match(f.src_mac)):
-        _log_flow_action(flow, *args)
+        _log_flow_action(f, *args)
     else:
         f.src_mac = None
-        _log_flow_action(flow, " no-mac >> ")
+        _log_flow_action(f, " no-mac >> ")
     f.save()
 
 
-if __name__ == "__main__":
+def main():
     with open_process(_CONNTRACK_WATCH) as proc:
         try:
             counter = 1
@@ -125,3 +125,7 @@ if __name__ == "__main__":
                 f"error: {e} on line {line}, Traceback: {traceback.extract_tb(exc_traceback)}"
             )
             sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

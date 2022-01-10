@@ -1,4 +1,29 @@
 # Pakon
+
+## Prerequisities
+
+The router should have been provided with following executables (please make package):
+
+```
+$ /usr/bin/conntrack-watch
+$ /usr/bin/tls_dns_dump
+```
+
+Router has to have following file in destination:
+
+```
+$ /usr/share/pakon-light/domains_replace/alias.json
+```
+
+you may find it (here)[]
+
+## Execute
+
+```
+$ dns-cache
+$ conntrack-monitor
+```
+
 ## Introduction
 Pakon is a system for monitoring network traffic. It basically collects and stores network flows, but enriched with app-level hostname ("user-treated hostname"). It consists of several componenents and pieces of software. 
 

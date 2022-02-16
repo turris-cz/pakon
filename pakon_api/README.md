@@ -53,10 +53,10 @@ pip install -e .
 
 4. Export variables to the terminal
 
-Set ``FLASK_APP``.
+Set ``FLASK_APP`` by using following command:
 
 ```
-export FLASK_APP=pakon-api
+export FLASK_APP=pakon_api
 ```
 
 5. Start flask
@@ -68,7 +68,13 @@ In case you need to expose service further than `localhost` (on router) set ``--
 
 You may override the default port. You don't have to necessarily.
 
-### Example query
+## Verify that it works
+
+Postman TO-DO
+
+### Send query
+
+Example query:
 
 post below json to serving host
 

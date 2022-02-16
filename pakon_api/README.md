@@ -1,26 +1,72 @@
 # Pakon API
 
-This project only covers the layer that serves as bridge between frontend and ``pakon`` package. Queries are pretty much untouched (except for ``time`` which requires special handling.)
+This project only covers the layer that serves as the bridge between the frontend and ``pakon`` package. Queries are pretty much untouched (except for ``time``, which requires special handling.)
 
-Implemented as bare flask application.
+It is implemented as bare flask application.
 
 ## Development
 
-Do not need to install locally or do some preparations. 
-Copy to router (``/tmp``, whatever), make sure you have ``pip3`` installed
+| :exclamation: These upcoming steps need to be executed on the router.  |
+|-----------------------------------------|
 
-    /tmp# opkg install python3-pip
-    /tmp# cd pakon-api
-    /tmp/pakon-api# pip install -e .
+| :zap:        Do not install it locally on your computer or even do some preparations.  |
+|-----------------------------------------|
 
-Set ``FLASK_APP`` env-var than run.
+1. Download this project
 
-    export FLASK_APP=pakon-api
-    flask run --host 0.0.0.0
+This could be done in multiple ways. 
 
+For example, you can download this repository using buttons provided by UI (GitLab/GitHub) and then move it by SCP using third-party software like FileZilla, WinSCP, etc. to folder /tmp on the router.
+
+The better way to connect to your router is to use the SSH protocol. On any GNU/Linux distributions, you need to open the terminal and proceed with the following commands:
+
+```
+ssh root@ipaddress
+opkg update
+opkg install git-http
+cd /tmp
+git clone address-of-this-repository
+```
+
+By running the last command, it will download not only files responding to fetch and pull files, but this package also depends on the git package to be able to clone it. 
+
+Usually, it is better to store things in ``/tmp`` (which is in RAM) to avoid unnecessary writes to the internal storage.
+
+Once you manage to be in the folder ``/tmp``, you can clone this repository.
+
+2. Install pip
+
+We need to install this package locally by using pip. This can be done as previously mentioned by ``opkg`` the package manager on OpenWrt.
+
+```
+opkg install python3-pip
+```
+
+3. Install this project
+
+We need to enter the project folder by using Linux command ``cd``. After that, we can use pip to install it.
+
+```
+cd pakon
+pip install -e .
+```
+
+4. Export variables to the terminal
+
+Set ``FLASK_APP``.
+
+```
+export FLASK_APP=pakon-api
+```
+
+5. Start flask
+```
+flask run --host 0.0.0.0
+```
+ 
 In case you need to expose service further than `localhost` (on router) set ``--host`` to ``0.0.0.0``
 
-You may override default port, you don't have to neccesarilly.
+You may override the default port. You don't have to necessarily.
 
 ### Example query
 

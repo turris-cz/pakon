@@ -261,7 +261,7 @@ def aggregate_flows(flows):
 
 def query(query):
     mac2name = load_names()
-    archive_path = uci_get("pakon.archive.path", default="/srv/pakon/pakon-archive.db")
+    archive_path = uci_get("pakon", "archive", "path", default="/srv/pakon/pakon-archive.db")
     con = sqlite3.connect("/var/lib/pakon.db")
     con.row_factory = sqlite3.Row
     con.execute("ATTACH DATABASE ? AS archive", (archive_path,))

@@ -5,7 +5,6 @@ import datetime
 from pakon import ROOT_PATH, PROJECT_ROOT
 from subprocess import Popen, PIPE
 
-_PATTERNS = ["%d-%m-%YT%H:%M:%S", "%d-%m-%Y"]
 
 
 def _call_ubus_leases():
@@ -20,30 +19,9 @@ def _call_ubus_leases():
     return res
 
 
-def _datetime_parse(string, fmt):
-    """Parse to pattern in specific manner"""
-    try:
-        dt = datetime.datetime.strptime(string, fmt)
-        return True, int(time.mktime(dt.timetuple()))
-    except ValueError:
-        return False, None
-
-
-def _try_parse(timestr):
-    """Iteratively figure out what pattern suits the situation"""
-    for pat in _PATTERNS:
-        success, retval = _datetime_parse(timestr, pat)
-        if success:
-            return retval
-    return None
-
-
 def json_query(query):
     """Helper function to conform time format and also provide json in string format with newline"""
-    for key in ("start", "end"):
-        if key in query:
-            query[key] = _try_parse(query[key])
-    js = json.dumps(query) + "\n"
+    js = json.dumps(query, indent=2) + "\n"
     query = js.encode()
     return query
 

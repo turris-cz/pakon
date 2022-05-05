@@ -1,6 +1,6 @@
 # Pakon API
 
-This project only covers the layer that serves as the bridge between the frontend and ``pakon`` package. Queries are pretty much untouched (except for ``time``, which requires special handling.)
+This project only covers the layer that serves as the bridge between the frontend and ``pakon`` package. Queries are pretty much untouched.
 
 It is implemented as bare flask application.
 
@@ -14,7 +14,7 @@ It is implemented as bare flask application.
 
 1. Download this project
 
-This could be done in multiple ways. 
+This could be done in multiple ways.
 
 For example, you can download this repository using buttons provided by UI (GitLab/GitHub) and then move it by SCP using third-party software like FileZilla, WinSCP, etc. to folder /tmp on the router.
 
@@ -28,7 +28,7 @@ cd /tmp
 git clone address-of-this-repository
 ```
 
-By running the last command, it will download not only files responding to fetch and pull files, but this package also depends on the git package to be able to clone it. 
+By running the last command, it will download not only files responding to fetch and pull files, but this package also depends on the git package to be able to clone it.
 
 Usually, it is better to store things in ``/tmp`` (which is in RAM) to avoid unnecessary writes to the internal storage.
 
@@ -63,76 +63,46 @@ export FLASK_APP=pakon_api
 ```
 flask run --host 0.0.0.0
 ```
- 
+
 In case you need to expose service further than `localhost` (on router) set ``--host`` to ``0.0.0.0``
 
 You may override the default port. You don't have to necessarily.
 
-## Verify that it works
+## Send query
 
-Postman TO-DO
+send ``POST`` request onto
 
-### Send query
+```
+http://<router-ip>/pakon/api/query
+```
+
+Having ``BODY`` of the request as json defined by query schema defined in [pakon_query.json](schema/pakon_query.json)
 
 Example query:
-
-post below json to serving host
 
 ```json
 {
     "mac":["c7:18:ba:b8:14:7d"],
-    "start":"25-09-2021T11:30:00",
-    "end":"26-09-2021T11:11:11"
+    "start": 1651730157,
+    "end": 1651732243
 }
 ```
 
-## Query schema
+### Query paramters
 
-We should have schema in regard to normilize queries.
-Query request schema:
+| parameter  | data type      | description                                      |
+|------------|----------------|--------------------------------------------------|
+| hostname   | str[]          | list of remote hostnames accessed by local user  |
+| mac        | str[], mac     | list of mac addresses you need to inspect        |
+| start, end | int, timestamp | parameters to filter on given time span          |
+| aggregate  | boolean        | True to aggregate with historical data           |
 
-```json
-{
-    "definitions": {
-        "time": {
-            "type": "string",
-            "pattern": "^(?:[0-9]{2}-){2}[0-9]{4}(?:T(?:[0-9]{2}:){2}[0-9]{2})?$"
-        }
-    },
-    "type": "object",
-    "properties": {
-        "hostname": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "pattern": "^[a-z.-]+$"
-            }
-        },
-        "mac": {
-            "type": "array",
-            "items": {
-                "type":"string",
-                "pattern": "^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$$"
-            }
-        },
-        "start": {"$ref": "#/definitions/time"},
-        "end": {"$ref": "#/definitions/time"},
-        "aggregate": {
-            "type": "boolean",
-            "enum": [true]
-        }
-    },
-    "additionalProperties": false
-}
-```
-
-For further details lookup the ``pakon-show`` command help. The __api__ implements pretty much same functionality.
 
 ## Response schema
 
 Response from backend is list of table rows. The columns are following:
 
-- datetime 
+- datetime
 - dur (duration in seconds)
 - src MAC (source MAC)
 - hostname (ip as fallback)

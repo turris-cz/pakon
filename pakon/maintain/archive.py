@@ -25,7 +25,7 @@ def parse_time(text):
         return 0
 
 
-archive_path = uci_get("pakon.archive.path", default="/srv/pakon/pakon-archive.db")
+archive_path = uci_get("pakon", "archive", "path", default="/srv/pakon/pakon-archive.db")
 
 con = sqlite3.connect(archive_path, isolation_level=None, timeout=30.0)
 con.row_factory = sqlite3.Row

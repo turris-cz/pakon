@@ -203,13 +203,14 @@ def new_device_notify(mac, iface):
 
 def handle_dns(data, con):
     if (
-        data["dns"]["type"] == "answer"
+        "answers" in data['dns'].keys()
         and "rrtype" in data["dns"].keys()
         and data["dns"]["rrtype"] in ("A", "AAAA", "CNAME")
     ):
         logging.debug("Saving DNS data")
         dev, mac = get_dev_mac(data["dest_ip"])
-        dns_cache.set(mac, data["dns"]["rrname"], data["dns"]["rdata"])
+        for answer in data['dns']['answers']:
+            dns_cache.set(mac, answer["rrname"], answer["rdata"])
 
 
 def handle_flow(data, con):

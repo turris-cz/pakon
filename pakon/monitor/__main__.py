@@ -30,8 +30,8 @@ def set_death_signal():
     libc.prctl(PR_SET_PDEATHSIG, SIGKILL)
 
 
-# logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+# logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 
 class everyN:
@@ -202,15 +202,28 @@ def new_device_notify(mac, iface):
 
 
 def handle_dns(data, con):
-    if (
-        "answers" in data['dns'].keys()
-        and "rrtype" in data["dns"].keys()
-        and data["dns"]["rrtype"] in ("A", "AAAA", "CNAME")
-    ):
-        logging.debug("Saving DNS data")
-        dev, mac = get_dev_mac(data["dest_ip"])
-        for answer in data['dns']['answers']:
-            dns_cache.set(mac, answer["rrname"], answer["rdata"])
+    version = data["dns"].get("version", 1)
+    match version:
+        case 1:
+            if (
+                data["dns"]["type"] == "answer"
+                and "rrtype" in data["dns"].keys()
+                and data["dns"]["rrtype"] in ("A", "AAAA", "CNAME")
+            ):
+                dev, mac = get_dev_mac(data["dest_ip"])
+                logging.debug("Saving DNS data")
+                dns_cache.set(mac, data["dns"]["rrname"], data["dns"]["rrname"])
+        case 2 | 3:
+            if "answers" not in data["dns"].keys():
+                return
+            dev, mac = get_dev_mac(data["dest_ip"])
+            for answer in data["dns"]["answers"]:
+                if answer["rrtype"] in ("A", "AAAA", "CNAME"):
+                    logging.debug("Saving DNS data")
+                    dns_cache.set(mac, answer["rrname"], answer["rdata"])
+        case _:
+            logging.error("Invalid Suricata API version: " + str(version))
+            sys.exit(1)
 
 
 def handle_flow(data, con):

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pakon"
+dynamic = ["version"]
+description = "Pakon is a system for monitoring network traffic"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { "file" = "COPYING" }
+authors = [
+    { name = "CZ.NIC, z.s.p.o. (http://www.nic.cz/)", email = "packaging@turris.cz" }
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+    "pyuci @ git+https://gitlab.nic.cz/turris/pyuci.git",
+]
+
+[project.urls]
+Homepage = "https://gitlab.nic.cz/turris/pakon"
+
+[project.scripts]
+pakon-maintain = "pakon.maintain.__main__:main"
+pakon-handler = "pakon.query_socket.__main__:main"
+pakon-monitor = "pakon.monitor.__main__:main"
+pakon-show = "pakon.show.__main__:main"
+
+[tool.hatch.version]
+path = "pakon/__init__.py"
+
+[tool.hatch.metadata]
+allow-ambiguous-features = true
+allow-direct-references = true
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/pakon",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "pakon",
+]

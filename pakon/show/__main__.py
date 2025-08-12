@@ -113,6 +113,10 @@ def main():
     finally:
         sock.close()
 
+    if args.json:
+        print(response)
+        sys.exit(0)
+
     data = json.loads(response)
     if not data:
         print("no records to show")

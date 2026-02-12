@@ -210,7 +210,7 @@ def archive():
         )
         con.execute(
             "DELETE FROM traffic WHERE ROWID IN (SELECT ROWID FROM traffic ORDER BY ROWID DESC LIMIT -1 OFFSET ?)",
-            hard_limit,
+            (hard_limit,),
         )
 
     rules = load_archive_rules()
@@ -227,7 +227,7 @@ def archive():
     now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
 
     archive_keep = uci_get("pakon.archive.keep", default="4w")
-    c.execute("DELETE FROM traffic WHERE start < ?", (now - parse_time(archive_keep)))
+    c.execute("DELETE FROM traffic WHERE start < ?", (now - parse_time(archive_keep),))
 
     # c.execute('VACUUM')
     # performing it every time is bad - it causes the whole database file to be rewritten

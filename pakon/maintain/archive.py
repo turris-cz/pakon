@@ -11,16 +11,15 @@ from ..utils import iter_section, uci_get, INTERVALS
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 # logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
+DEFAULT_ARCHIVE_SIZE_THRESHOLD = 16384
+
 
 def parse_time(text):
     """Multiply int with time unit multiplier based on INTERVALS mapping"""
     try:
         return int(text)
     except ValueError:
-        value, tunit, = (
-            int(text[:-1]),
-            text[-1:].upper(),
-        )
+        value, tunit = int(text[:-1]), text[-1:].upper()
         return INTERVALS[tunit] * value
     finally:
         return 0
@@ -92,7 +91,9 @@ def squash_for_mac_and_hostname(
     src_mac, hostname, from_details, to_details, start, rules
 ):
     def add_to_insert(flow):
-        if flow["bytes_send"] + flow["bytes_received"] < rules["size_threshold"]:
+        if flow["bytes_send"] + flow["bytes_received"] < rules.get(
+            "size_threshold", DEFAULT_ARCHIVE_SIZE_THRESHOLD
+        ):
             return
         flow["detail"] = to_details
         to_insert.append(flow)

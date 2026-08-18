@@ -1,7 +1,6 @@
 import sys
 import subprocess
 import time
-import datetime
 import sqlite3
 import logging
 
@@ -36,7 +35,7 @@ con.row_factory = sqlite3.Row
 def squash(from_details, to_details, rules):
     global con
     c = con.cursor()
-    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    now = int(time.time())
     start = now - rules["up_to"]
     inserted = 0
     deleted = 0
@@ -226,7 +225,7 @@ def archive():
 
     for i in range(len(rules)):
         squash(i, i + 1, rules[i])
-    now = int(time.mktime(datetime.datetime.utcnow().timetuple()))
+    now = int(time.time())
 
     archive_keep = uci_get("pakon.archive.keep", default="4w")
     c.execute("DELETE FROM traffic WHERE start < ?", (now - parse_time(archive_keep),))

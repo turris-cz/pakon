@@ -18,10 +18,12 @@ def parse_time(text):
     """Multiply int with time unit multiplier based on INTERVALS mapping"""
     try:
         return int(text)
-    except ValueError:
-        value, tunit = int(text[:-1]), text[-1:].upper()
-        return INTERVALS[tunit] * value
-    finally:
+    except (TypeError, ValueError):
+        pass
+    try:
+        return INTERVALS[str(text)[-1:].upper()] * int(str(text)[:-1])
+    except (KeyError, ValueError):
+        logging.warning("can't parse time specification %r, using 0", text)
         return 0
 
 

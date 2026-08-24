@@ -1,0 +1,49 @@
+{
+    "name": "pakon-ui",
+    "version": "0.1.0",
+    "homepage": "/repakon",
+    "private": true,
+    "dependencies": {
+        "@craco/craco": "^6.3.0",
+        "@headlessui/react": "^1.4.1",
+        "@heroicons/react": "^1.0.4",
+        "@testing-library/jest-dom": "^5.11.4",
+        "@testing-library/react": "^11.1.0",
+        "@testing-library/user-event": "^12.1.10",
+        "chart.js": "^3.8.0",
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2",
+        "react-scripts": "4.0.3",
+        "web-vitals": "^1.0.1"
+    },
+    "scripts": {
+        "start": "NODE_OPTIONS=--openssl-legacy-provider craco start",
+        "build": "NODE_OPTIONS=--openssl-legacy-provider craco build",
+        "test": "NODE_OPTIONS=--openssl-legacy-provider craco test",
+        "eject": "react-scripts eject"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "devDependencies": {
+        "autoprefixer": "^9.8.7",
+        "postcss": "^7.0.38",
+        "react-chartjs-2": "^4.1.0",
+        "tailwindcss": "npm:@tailwindcss/postcss7-compat@^2.2.17"
+    }
+}

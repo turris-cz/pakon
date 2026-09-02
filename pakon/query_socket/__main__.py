@@ -27,10 +27,49 @@ proto_ports = {
 }
 
 
-def load_names():
+def load_lease_names():
+    """Names dnsmasq learned from the DHCP requests themselves.
+
+    Devices that randomize their MAC address never get a static reservation,
+    so without this most of a normal network shows up as bare MAC addresses.
+    """
+    try:
+        leasefile = uci_get(
+            "dhcp.@dnsmasq[0].leasefile", default="/tmp/dhcp.leases"
+        )
+    except Exception:
+        leasefile = "/tmp/dhcp.leases"
     mac2name = {}
+    try:
+        with open(leasefile) as f:
+            for line in f:
+                # <expiry> <mac> <address> <name> <client id>, with the
+                # IPv6 leases carrying an IAID where IPv4 has the address
+                fields = line.split()
+                if len(fields) < 4 or fields[3] == "*":
+                    continue
+                if fields[1].count(":") != 5:
+                    continue
+                mac2name[fields[1].lower()] = fields[3]
+    except OSError:
+        print("can't read DHCP leases from " + leasefile)
+    return mac2name
+
+
+def load_names():
+    # static reservations are an explicit choice, so they win over the name a
+    # device happened to ask for
+    mac2name = load_lease_names()
     for host in iter_section("dhcp", "host"):
-        mac2name[host["mac"].lower()] = host["name"]
+        # a host section may carry only a name and an address, and its mac
+        # option may be a list holding several addresses
+        if "mac" not in host or "name" not in host:
+            continue
+        macs = host["mac"]
+        if isinstance(macs, str):
+            macs = (macs,)
+        for mac in macs:
+            mac2name[mac.lower()] = host["name"]
     return mac2name
 
 

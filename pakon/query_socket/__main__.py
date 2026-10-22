@@ -30,7 +30,15 @@ proto_ports = {
 def load_names():
     mac2name = {}
     for host in iter_section("dhcp", "host"):
-        mac2name[host["mac"].lower()] = host["name"]
+        if not (name := host.get("name")):
+            continue
+
+        if mac := host.get("mac"):
+            if isinstance(mac, str):
+                mac = mac.split()
+            for macaddr in mac:
+                if macaddr:
+                    mac2name[macaddr.lower()] = name
     return mac2name
 
 
